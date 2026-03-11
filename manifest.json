@@ -1,0 +1,22 @@
+{
+    "name": "Rate this BYU professor",
+    "description": "Integration of Rate My Professor into BYU's MyMAP",
+    "version": "1.0",
+    "manifest_version": 3,
+    "action": {
+        "default_popup": "popup/popup.html",
+        "default_icon": "images/RateThisBYUProfessor.png"
+    },
+    "icons": {
+
+    },
+    "content_scripts": [
+        {
+            "js": ["scripts/get_rating.js"],
+            "matches": [
+                "https://commtech.byu.edu/auth/mymap/*"
+            ],
+            "run_at": "document_end"
+        }
+    ]
+}
