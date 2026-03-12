@@ -1,3 +1,14 @@
+html {
+    background: none;
+}
+
 body {
-    border-radius: 10px;
+    margin: 0;
+    padding: 10px;
+    background-color: #002e5d;
+    color: #fff;
+    width: 300px;
+
+    text-align: center;
+    font-size: medium;
 }
