@@ -10,6 +10,9 @@
     "icons": {
 
     },
+    "permissions": [
+        "storage"
+    ],
     "content_scripts": [
         {
             "js": ["scripts/get_rating.js"],

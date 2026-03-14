@@ -1,22 +1,30 @@
-const professors = new Map();
-
-function get_rating(elements) {
-    // console.log("Available professors:");
-    elements.forEach(element => {
+async function get_rating(elements) {
+    for (const element of elements) {
         let professorName = element.textContent;
         if (professorName != "TBD") {
             let score = 0;
-            if (professors.has(professorName)) {
-                score = professors.get(professorName);
+
+            const professorData = await chrome.storage.local.get(professorName);
+            if (Object.keys(professorData).length > 0) {
+                // If data is more than a few days old, we could re-pull it
+                if (professorData[professorName].date != undefined && Date.now() - new Date(professorData[professorName].date) > 1000 * 60 * 60 * 24 * 3) {
+                    console.log(professorName + ": This data is old and could be re-pulled");
+                }
+                score = professorData[professorName].score;
             } else {
                 // This would eventually be the actual query
                 score = professorName[0].toLowerCase() < 'f' ? 5 : professorName[0].toLowerCase() < 'q' ? 3.5 : 1.5
-                professors.set(professorName, score);
+                chrome.storage.local.set(
+                    { [professorName]: {
+                        'score': score,
+                        'date': Date.now()
+                    }}
+                );
                 console.log(professorName + ": " + score);
             }
 
             // Make it look pretty!
-            color = score > 4 ? "#7ff6c3" : score > 3 ? "#fff170" : "#ff9c9c";
+            color = score >= 4 ? "#7ff6c3" : score >= 3 ? "#fff170" : "#ff9c9c";
 
             element.style.backgroundColor = "#f7f7f7";
             element.style.borderRadius = "4px";
@@ -25,7 +33,7 @@ function get_rating(elements) {
             element.style.cursor = "pointer";
             
         }
-    });
+    }
 }
 
 console.log("Rate This BYU Professor is active!");
@@ -42,16 +50,15 @@ observer.observe(document.body, {
 });
 
 
-function tryFindingProfessors() {
+async function tryFindingProfessors() {
     const fragment = window.location.hash.substring(1);
-    // console.log(typeof(fragment));
     if (fragment == "/") {
         // Home page
         console.log("Getting scores for your professors");
-        get_rating(document.querySelectorAll(".cdSectionRoot > :nth-child(3)"));
+        await get_rating(document.querySelectorAll(".cdSectionRoot > :nth-child(3)"));
     } else if (fragment.includes("chooseASection")) {
         // In class selection
         console.log("Getting scores for available professors");
-        get_rating(document.querySelectorAll(".sectionDetailsCol > h4"));
+        await get_rating(document.querySelectorAll(".sectionDetailsCol > h4"));
     }
 }
