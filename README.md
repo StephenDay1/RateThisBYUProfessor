@@ -1,2 +1,2 @@
 # RateThisBYUProfessor
-Chrome extension adding integration of Rate My Professor into BYU's MyMAP
+Chrome extension adding integration of Rate My Professors into BYU's MyMAP
