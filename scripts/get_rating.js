@@ -41,6 +41,18 @@ console.log("Rate This BYU Professor is active!");
 // Easiest way to check if we should look for professors again is by seeing if the page elements updated at all.
 const observer = new MutationObserver(function(mutations) {
     tryFindingProfessors();
+
+    // Hide the beta notification bar and the alerts as they appear.
+    const betaBar = document.querySelector('.betaTestBar');
+    if (betaBar && betaBar.style.visibility !== 'hidden') {
+        betaBar.style.visibility = 'hidden';
+    }
+    const notifications = document.querySelectorAll('.resultNotificationRoot');
+    if (notifications.length > 0) {
+        notifications.forEach(notification => {
+            notification.remove();
+        });
+    }
 });
 
 // We will start by observing the body of the document.
