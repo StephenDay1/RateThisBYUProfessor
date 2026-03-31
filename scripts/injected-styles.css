@@ -1,0 +1,24 @@
+.rating-popup {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    width: 100%;
+    margin-bottom: 5px;
+    background-color: #f7f7f7;
+    /* border: 1px solid #ccc; */
+    border-radius: 4px;
+    padding: 8px;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out 0.1s;
+    display: none;
+    color: #000;
+}
+
+.professor-name {
+    position: relative;
+    background-color: #f7f7f7;
+    border-radius: 4px;
+    padding: 4px 1px 4px 4px;
+    cursor: pointer;
+    height: fit-content;
+}

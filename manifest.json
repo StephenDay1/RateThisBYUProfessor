@@ -13,6 +13,12 @@
     "permissions": [
         "storage"
     ],
+    "web_accessible_resources": [
+        {
+            "resources": ["scripts/injected-styles.css"],
+            "matches": ["https://commtech.byu.edu/*"]
+        }
+    ],
     "content_scripts": [
         {
             "js": ["scripts/get_rating.js"],

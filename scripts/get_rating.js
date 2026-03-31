@@ -1,5 +1,23 @@
+// Add the CSS file to the page
+function addCSS(fileName) {
+  var head = document.head;
+  var link = document.createElement("link");
+
+  link.type = "text/css";
+  link.rel = "stylesheet";
+  link.href = chrome.runtime.getURL(fileName);
+
+  head.appendChild(link);
+}
+
+addCSS("scripts/injected-styles.css");
+
 async function get_rating(elements) {
     for (const element of elements) {
+        if (element.classList.contains('newly-added')) {
+            continue;
+        }
+
         let professorName = element.textContent;
         if (professorName != "TBD") {
             let score = 0;
@@ -23,14 +41,48 @@ async function get_rating(elements) {
                 console.log(professorName + ": " + score);
             }
 
+            // Copy professor name into the div that will replace it.
+            const professorText = document.createElement('div');
+            professorText.textContent = element.textContent;
+
             // Make it look pretty!
             color = score >= 4 ? "#7ff6c3" : score >= 3 ? "#fff170" : "#ff9c9c";
 
-            element.style.backgroundColor = "#f7f7f7";
-            element.style.borderRadius = "4px";
-            element.style.padding = "4px 1px 4px 4px";
-            element.style.borderLeft = `5px solid ${color}`;
-            element.style.cursor = "pointer";
+            professorText.classList.add('professor-name', 'newly-added');
+            professorText.style.borderLeft = `5px solid ${color}`;
+            
+            // Popup will appear when hovering over the professor's name, showing the rating.
+            const popup = document.createElement('div');
+            popup.classList.add('rating-popup');
+            popup.textContent = `Rating: ${score}`;
+            // popup.style.borderLeft = `5px solid ${color}`;
+
+            professorText.appendChild(popup);
+
+            let timeout;
+            professorText.addEventListener('mouseenter', () => {
+                popup.style.display = "block";
+                timeout = setTimeout(() => {
+                    popup.style.opacity = "1";
+                }, 100);
+            });
+            professorText.addEventListener('click', () => {
+                popup.style.display = "block";
+                timeout = setTimeout(() => {
+                    popup.style.opacity = "1";
+                }, 100);
+            });
+            professorText.addEventListener('mouseleave', () => {
+                clearTimeout(timeout);
+                popup.style.opacity = "0";
+                setTimeout(() => {
+                    popup.style.display = "none";
+                }, 400); // Wait for the transition to finish
+
+            });
+
+            // element.after(popup);
+            element.replaceWith(professorText);
             
         }
     }
