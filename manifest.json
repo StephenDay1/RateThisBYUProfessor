@@ -21,7 +21,10 @@
     ],
     "content_scripts": [
         {
-            "js": ["scripts/get_rating.js"],
+            "js": [
+                "scripts/get_rating.js",
+                "scripts/scrape.js"
+            ],
             "matches": [
                 "https://commtech.byu.edu/auth/mymap/*"
             ],

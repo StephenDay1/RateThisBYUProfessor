@@ -13,6 +13,7 @@ function addCSS(fileName) {
 addCSS("scripts/injected-styles.css");
 
 async function get_rating(elements) {
+    observer.disconnect(); // Stop observing while we update the page to avoid infinite loops
     for (const element of elements) {
         if (element.classList.contains('newly-added')) {
             continue;
@@ -31,6 +32,9 @@ async function get_rating(elements) {
                 score = professorData[professorName].score;
             } else {
                 // This would eventually be the actual query
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                findProfessor(professorName);
+
                 score = professorName[0].toLowerCase() < 'f' ? 5 : professorName[0].toLowerCase() < 'q' ? 3.5 : 1.5
                 chrome.storage.local.set(
                     { [professorName]: {
@@ -86,6 +90,10 @@ async function get_rating(elements) {
             
         }
     }
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    }); // Resume observing after updates are done
 }
 
 console.log("Rate This BYU Professor is active!");
