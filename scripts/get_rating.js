@@ -27,6 +27,8 @@ async function get_rating(elements) {
             // 1. Check local storage first to save on API calls
             const professorData = await chrome.storage.local.get(professorName);
             
+            // TODO clean this later
+            let response = null;
             if (Object.keys(professorData).length > 0) {
                 const storedEntry = professorData[professorName];
                 // If data is older than 3 days, we could flag it, but for now, we use it
@@ -39,12 +41,14 @@ async function get_rating(elements) {
                 console.log(`Searching RMP for: ${professorName}`);
                 
                 try {
-                    const response = await new Promise((resolve) => {
+                    response = await new Promise((resolve) => {
                         chrome.runtime.sendMessage(
                             { action: "findProfessor", name: professorName },
                             (res) => resolve(res)
                         );
                     });
+
+                    response = response.rating; // all data is inside .rating
                     console.log(`Received rating for ${professorName}:`, response);
 
                     // Parse the returned rating or default to 0 if not found
@@ -67,6 +71,7 @@ async function get_rating(elements) {
 
             // 4. UI Transformation: Create the new display element
             const professorContainer = document.createElement('div');
+            professorContainer.href = response && response.url ? response.url : "#";
             professorContainer.classList.add('professor-name', 'newly-added');
             
             const nameSpan = document.createElement('span');
@@ -97,7 +102,7 @@ async function get_rating(elements) {
             };
 
             professorContainer.addEventListener('mouseenter', showPopup);
-            professorContainer.addEventListener('click', showPopup);
+            // professorContainer.addEventListener('click', showPopup);
             professorContainer.addEventListener('mouseleave', hidePopup);
 
             // 7. Replace original element in the DOM
