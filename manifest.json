@@ -13,17 +13,22 @@
     "permissions": [
         "storage"
     ],
+    "host_permissions": [
+        "https://www.ratemyprofessors.com/*"
+    ],
     "web_accessible_resources": [
         {
             "resources": ["scripts/injected-styles.css"],
             "matches": ["https://commtech.byu.edu/*"]
         }
     ],
+    "background": {
+        "service_worker": "scripts/scrape.js"
+    },
     "content_scripts": [
         {
             "js": [
-                "scripts/get_rating.js",
-                "scripts/scrape.js"
+                "scripts/get_rating.js"
             ],
             "matches": [
                 "https://commtech.byu.edu/auth/mymap/*"

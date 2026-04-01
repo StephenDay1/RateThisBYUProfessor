@@ -14,123 +14,130 @@ addCSS("scripts/injected-styles.css");
 
 async function get_rating(elements) {
     observer.disconnect(); // Stop observing while we update the page to avoid infinite loops
+    
     for (const element of elements) {
         if (element.classList.contains('newly-added')) {
             continue;
         }
 
-        let professorName = element.textContent;
-        if (professorName != "TBD") {
+        let professorName = element.textContent.trim();
+        if (professorName !== "TBD" && professorName !== "") {
             let score = 0;
 
+            // 1. Check local storage first to save on API calls
             const professorData = await chrome.storage.local.get(professorName);
+            
             if (Object.keys(professorData).length > 0) {
-                // If data is more than a few days old, we could re-pull it
-                if (professorData[professorName].date != undefined && Date.now() - new Date(professorData[professorName].date) > 1000 * 60 * 60 * 24 * 3) {
-                    console.log(professorName + ": This data is old and could be re-pulled");
+                const storedEntry = professorData[professorName];
+                // If data is older than 3 days, we could flag it, but for now, we use it
+                if (storedEntry.date && (Date.now() - storedEntry.date > 1000 * 60 * 60 * 24 * 3)) {
+                    console.log(`${professorName}: Cached data is older than 3 days.`);
                 }
-                score = professorData[professorName].score;
+                score = storedEntry.score;
             } else {
-                // This would eventually be the actual query
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                findProfessor(professorName);
+                // 2. Fetch from RateMyProfessors via the Background Script (CORS bypass)
+                console.log(`Searching RMP for: ${professorName}`);
+                
+                try {
+                    const response = await new Promise((resolve) => {
+                        chrome.runtime.sendMessage(
+                            { action: "findProfessor", name: professorName },
+                            (res) => resolve(res)
+                        );
+                    });
+                    console.log(`Received rating for ${professorName}:`, response);
 
-                score = professorName[0].toLowerCase() < 'f' ? 5 : professorName[0].toLowerCase() < 'q' ? 3.5 : 1.5
-                chrome.storage.local.set(
-                    { [professorName]: {
-                        'score': score,
-                        'date': Date.now()
-                    }}
-                );
-                console.log(professorName + ": " + score);
+                    // Parse the returned rating or default to 0 if not found
+                    score = (response && response.rating && response.rating !== "N/A") 
+                            ? parseFloat(response.rating) 
+                            : 0;
+
+                    // 3. Cache the result
+                    await chrome.storage.local.set({
+                        [professorName]: {
+                            'score': score,
+                            'date': Date.now()
+                        }
+                    });
+                } catch (err) {
+                    console.error("Error communicating with background script:", err);
+                    score = 0;
+                }
             }
 
-            // Copy professor name into the div that will replace it.
-            const professorText = document.createElement('div');
-            professorText.textContent = element.textContent;
-
-            // Make it look pretty!
-            color = score >= 4 ? "#7ff6c3" : score >= 3 ? "#fff170" : "#ff9c9c";
-
-            professorText.classList.add('professor-name', 'newly-added');
-            professorText.style.borderLeft = `5px solid ${color}`;
+            // 4. UI Transformation: Create the new display element
+            const professorContainer = document.createElement('div');
+            professorContainer.classList.add('professor-name', 'newly-added');
             
-            // Popup will appear when hovering over the professor's name, showing the rating.
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = professorName;
+            professorContainer.appendChild(nameSpan);
+
+            // Determine color based on score
+            const color = score >= 4 ? "#7ff6c3" : score >= 3 ? "#fff170" : score > 0 ? "#ff9c9c" : "#cccccc";
+            professorContainer.style.borderLeft = `5px solid ${color}`;
+            
+            // 5. Create the Popup
             const popup = document.createElement('div');
             popup.classList.add('rating-popup');
-            popup.textContent = `Rating: ${score}`;
-            // popup.style.borderLeft = `5px solid ${color}`;
+            popup.textContent = score > 0 ? `Rating: ${score} / 5.0` : "No Rating Found";
 
-            professorText.appendChild(popup);
+            professorContainer.appendChild(popup);
 
+            // 6. Interaction Listeners
             let timeout;
-            professorText.addEventListener('mouseenter', () => {
+            const showPopup = () => {
                 popup.style.display = "block";
-                timeout = setTimeout(() => {
-                    popup.style.opacity = "1";
-                }, 100);
-            });
-            professorText.addEventListener('click', () => {
-                popup.style.display = "block";
-                timeout = setTimeout(() => {
-                    popup.style.opacity = "1";
-                }, 100);
-            });
-            professorText.addEventListener('mouseleave', () => {
+                timeout = setTimeout(() => { popup.style.opacity = "1"; }, 10);
+            };
+            const hidePopup = () => {
                 clearTimeout(timeout);
                 popup.style.opacity = "0";
-                setTimeout(() => {
-                    popup.style.display = "none";
-                }, 400); // Wait for the transition to finish
+                setTimeout(() => { popup.style.display = "none"; }, 400);
+            };
 
-            });
+            professorContainer.addEventListener('mouseenter', showPopup);
+            professorContainer.addEventListener('click', showPopup);
+            professorContainer.addEventListener('mouseleave', hidePopup);
 
-            // element.after(popup);
-            element.replaceWith(professorText);
-            
+            // 7. Replace original element in the DOM
+            element.replaceWith(professorContainer);
         }
     }
+    
+    // Resume observing after updates are done
     observer.observe(document.body, {
         childList: true,
         subtree: true
-    }); // Resume observing after updates are done
+    }); 
 }
 
 console.log("Rate This BYU Professor is active!");
 
-// Easiest way to check if we should look for professors again is by seeing if the page elements updated at all.
 const observer = new MutationObserver(function(mutations) {
     tryFindingProfessors();
 
-    // Hide the beta notification bar and the alerts as they appear.
+    // UI Cleanup for MyMap
     const betaBar = document.querySelector('.betaTestBar');
     if (betaBar && betaBar.style.visibility !== 'hidden') {
         betaBar.style.visibility = 'hidden';
     }
     const notifications = document.querySelectorAll('.resultNotificationRoot');
-    if (notifications.length > 0) {
-        notifications.forEach(notification => {
-            notification.remove();
-        });
-    }
+    notifications.forEach(n => n.remove());
 });
 
-// We will start by observing the body of the document.
 observer.observe(document.body, {
     childList: true,
     subtree: true
 });
 
-
 async function tryFindingProfessors() {
     const fragment = window.location.hash.substring(1);
-    if (fragment == "/") {
-        // Home page
-        console.log("Getting scores for your professors");
+    if (fragment === "/") {
+        // Dashboard / Home page
         await get_rating(document.querySelectorAll(".cdSectionRoot > :nth-child(3)"));
     } else if (fragment.includes("chooseASection")) {
-        // In class selection
-        console.log("Getting scores for available professors");
+        // Registration / Class search
         await get_rating(document.querySelectorAll(".sectionDetailsCol > h4"));
     }
 }
