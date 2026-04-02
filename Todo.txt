@@ -1,1 +1,0 @@
-Icon should be a 128x128 png

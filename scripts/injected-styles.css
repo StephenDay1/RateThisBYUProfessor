@@ -3,6 +3,7 @@
     z-index: 1000;
     transform: translate(60%, -50%);
     width: max-content;
+    max-width: 250px;
     height: fit-content;
     background-color: #f7f7f7;
     border: 1px solid #e6e9f1;

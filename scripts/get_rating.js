@@ -78,7 +78,7 @@ async function get_rating(elements) {
                 professorContainer.href = professorData.url;
                 professorContainer.target = "_blank"; // Open in new tab
             }
-            professorContainer.classList.add('professor-name', 'newly-added');
+            professorContainer.classList.add('professor-name', 'newly-added', 'verticallyCentered');
             
             const nameSpan = document.createElement('span');
             nameSpan.textContent = professorName;
@@ -92,22 +92,31 @@ async function get_rating(elements) {
             const popup = document.createElement('div');
             popup.classList.add('rating-popup');
             // popup.textContent = professorData.score > 0 ? `Rating: ${professorData.score} / 5` : "No Rating Found";
+            if (professorData.score > 0 && professorData.rating !== "N/A") {
+                const scoreBox = document.createElement('div');
+                scoreBox.classList.add('score-box');
+                scoreBox.textContent = professorData.score > 0 ? professorData.score.toFixed(1) : "N/A";
+                scoreBox.style.backgroundColor = color;
+                popup.appendChild(scoreBox);
 
-            const scoreBox = document.createElement('div');
-            scoreBox.classList.add('score-box');
-            scoreBox.textContent = professorData.score > 0 ? professorData.score.toFixed(1) : "N/A";
-            scoreBox.style.backgroundColor = color;
-            popup.appendChild(scoreBox);
+                const detailsBox = document.createElement('div');
+                detailsBox.classList.add('info-panel');
+                detailsBox.innerHTML = `
+                    <div className="info-item"><strong>Difficulty:</strong> ${professorData.difficulty || "N/A"}</div>
+                    <div className="info-item"><strong>Would Take Again:</strong> ${professorData.wouldTakeAgain || "N/A"}</div>
+                    <div className="info-item">Based on ${professorData.numRatings} ratings.</div>
+                `;
+                popup.appendChild(detailsBox);
+            } else {
+                const detailsBox = document.createElement('div');
+                detailsBox.classList.add('info-panel');
+                detailsBox.innerHTML = `
+                <h5 className="info-item">No Rating Found</h5>
+                <div className="info-item">We couldn't find this professor, but you can click on their name to search for yourself!</div>
+                `;
+                popup.appendChild(detailsBox);
 
-            const detailsBox = document.createElement('div');
-            detailsBox.classList.add('info-panel');
-            detailsBox.innerHTML = `
-                <div className="info-item"><strong>Difficulty:</strong> ${professorData.difficulty || "N/A"}</div>
-                <div className="info-item"><strong>Would Take Again:</strong> ${professorData.wouldTakeAgain || "N/A"}</div>
-                <div className="info-item">Based on ${professorData.numRatings} ratings.</div>
-            `;
-            popup.appendChild(detailsBox);
-
+            }
             professorContainer.appendChild(popup);
 
             // 6. Interaction Listeners
