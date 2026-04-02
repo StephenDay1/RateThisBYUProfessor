@@ -44,7 +44,7 @@ async function fetchRating(name) {
 
         professorData = {
             rating: "N/A",
-            url: "N/A",
+            // url: "N/A", // just leave null
             difficulty: "N/A",
             wouldTakeAgain: "N/A",
             numRatings: "N/A",

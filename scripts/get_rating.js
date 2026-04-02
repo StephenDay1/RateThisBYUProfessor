@@ -25,44 +25,45 @@ async function get_rating(elements) {
             let score = 0;
 
             // 1. Check local storage first to save on API calls
-            const professorData = await chrome.storage.local.get(professorName);
+            const professorCachedData = await chrome.storage.local.get(professorName);
             
-            // TODO clean this later
-            let response = null;
-            if (Object.keys(professorData).length > 0) {
-                const storedEntry = professorData[professorName];
+            let professorData = null;
+            // If we have data for this professor, use it. We could also check the date to see if it's stale.
+            if (Object.keys(professorCachedData).length > 0) {
+                const storedEntry = professorCachedData[professorName];
                 // If data is older than 3 days, we could flag it, but for now, we use it
                 if (storedEntry.date && (Date.now() - storedEntry.date > 1000 * 60 * 60 * 24 * 3)) {
                     console.log(`${professorName}: Cached data is older than 3 days.`);
                 }
-                score = storedEntry.score;
+                // score = storedEntry.score;
+                professorData = storedEntry;
+                console.log(`Using cached data for ${professorName}:`, professorData);
             } else {
-                // 2. Fetch from RateMyProfessors via the Background Script (CORS bypass)
+                // 2. Fetch from RateMyProfessors via the Background Script
                 console.log(`Searching RMP for: ${professorName}`);
                 
                 try {
-                    response = await new Promise((resolve) => {
+                    const rawResponse = await new Promise((resolve) => {
                         chrome.runtime.sendMessage(
                             { action: "findProfessor", name: professorName },
                             (res) => resolve(res)
                         );
                     });
 
-                    response = response.rating; // all data is inside .rating
-                    console.log(`Received rating for ${professorName}:`, response);
+                    const ratingData = rawResponse.rating; 
 
-                    // Parse the returned rating or default to 0 if not found
-                    score = (response && response.rating && response.rating !== "N/A") 
-                            ? parseFloat(response.rating) 
-                            : 0;
+                    // 1. Combine everything into one flat object
+                    professorData = {
+                        date: Date.now(),
+                        // Calculate score once here so it's easily accessible later
+                        score: (ratingData && ratingData.rating && ratingData.rating !== "N/A") 
+                                ? parseFloat(ratingData.rating) 
+                                : 0,
+                        ...ratingData // This "spreads" all keys (id, department, url, etc.) into professorData
+                    };
 
-                    // 3. Cache the result
-                    await chrome.storage.local.set({
-                        [professorName]: {
-                            'score': score,
-                            'date': Date.now()
-                        }
-                    });
+                    // 2. Cache the entire flattened object
+                    await chrome.storage.local.set({ [professorName]: professorData });
                 } catch (err) {
                     console.error("Error communicating with background script:", err);
                     score = 0;
@@ -70,8 +71,11 @@ async function get_rating(elements) {
             }
 
             // 4. UI Transformation: Create the new display element
-            const professorContainer = document.createElement('div');
-            professorContainer.href = response && response.url ? response.url : "#";
+            const professorContainer = document.createElement('a');
+            if (professorData && professorData.url) {
+                professorContainer.href = professorData.url;
+                professorContainer.target = "_blank"; // Open in new tab
+            }
             professorContainer.classList.add('professor-name', 'newly-added');
             
             const nameSpan = document.createElement('span');
@@ -79,13 +83,13 @@ async function get_rating(elements) {
             professorContainer.appendChild(nameSpan);
 
             // Determine color based on score
-            const color = score >= 4 ? "#7ff6c3" : score >= 3 ? "#fff170" : score > 0 ? "#ff9c9c" : "#cccccc";
+            const color = professorData.score >= 4 ? "#7ff6c3" : professorData.score >= 3 ? "#fff170" : professorData.score > 0 ? "#ff9c9c" : "#cccccc";
             professorContainer.style.borderLeft = `5px solid ${color}`;
             
             // 5. Create the Popup
             const popup = document.createElement('div');
             popup.classList.add('rating-popup');
-            popup.textContent = score > 0 ? `Rating: ${score} / 5.0` : "No Rating Found";
+            popup.textContent = professorData.score > 0 ? `Rating: ${professorData.score} / 5.0` : "No Rating Found";
 
             professorContainer.appendChild(popup);
 
