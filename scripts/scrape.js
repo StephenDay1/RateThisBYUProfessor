@@ -18,10 +18,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 async function fetchRating(name) {
     const queryName = encodeURIComponent(name);
-    const url = `https://www.ratemyprofessors.com/search/professors/?q=${queryName}`;
+    const queryURL = `https://www.ratemyprofessors.com/search/professors/?q=${queryName}`;
 
     try {
-        const response = await fetch(url, {
+        const response = await fetch(queryURL, {
             method: 'GET',
             headers: {
                 // 2026 "Human-Like" Headers
@@ -96,7 +96,10 @@ async function fetchRating(name) {
 
         // infoPageURLMatch = [...html.matchAll(/TeacherCard__StyledTeacherCard-syjs0d-0[^>]*href="([^"]+)"/g)][index];
         // return infoPageURLMatch[1];
-        if (professorData.url !== "N/A") {
+        if (professorData.url && professorData.url !== "N/A") {
+            console.log("Professor Info Page URL:", professorData.url);
+
+
             const infoPageURL = `${professorData.url}`;
             const infoResponse = await fetch(infoPageURL, {
                 method: 'GET',
@@ -159,6 +162,8 @@ async function fetchRating(name) {
                 professorData.tags = Object.keys(occurences).filter(tag => occurences[tag] > 1);
 
             }
+        } else {
+            professorData.url = queryURL;
         }
 
         return professorData;

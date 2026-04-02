@@ -175,11 +175,15 @@ async function tryFindingProfessors() {
     if (fragment === "/") {
         // Dashboard / Home page
         // Check if registering for future term or viewing past term.
-        const classListingElements = document.querySelector(".cdSectionRoot");
-        if (!classListingElements) {
+        const classListingElements = document.querySelectorAll(".cdSectionRoot");
+        if (!classListingElements || classListingElements.length === 0 || Array.from(classListingElements).some(el => el.attributes['rated-already'] && el.attributes['rated-already'].value === "true")) {
             return;
         }
-        const isRegistrationForFuture = classListingElements.closest('.cdRegCartDraggable') !== null;
+        // console.log("Class listing elements found:", classListingElements);
+        for (const el of classListingElements) {
+            el.setAttribute("rated-already", "true");
+        }
+        const isRegistrationForFuture = classListingElements[0].closest('.cdRegCartDraggable') !== null;
         if (isRegistrationForFuture) {
             await get_rating(document.querySelectorAll(".cdSectionRoot > :nth-child(3 of .verticallyCentered)"));
         } else {
