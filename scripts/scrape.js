@@ -51,19 +51,16 @@ async function fetchRating(name) {
             tags: []
         }
 
-        resultDivs = [...html.matchAll(/TeacherCard__StyledTeacherCard-syjs0d-0[^>]*>([\s\S]*?)<\/div>/g)];
-
-        // console.log("Result Divs Count:", resultDivs);
+        resultDivs = [...html.matchAll(/CardSchool__School-sc-19lmz2k-1 bjvHvb[^>]*>([\s\S]*?)<\/div>/g)];
 
         for (let index = 0; index < resultDivs.length; index++) {
             const divContent = resultDivs[index][1];
+            console.log(`Checking div ${index}:`, resultDivs[index][1]);
             if (divContent.toLowerCase().includes("brigham young university")) {
                 // Extract info page URL
                 // <a class="TeacherCard__StyledTeacherCard-syjs0d-0 eerjaA" href="/professor/2918231"><div class="TeacherCard__InfoRatingWrapper-syjs0d-3 kAxNBg"><div class="TeacherCard__NumRatingWrapper-syjs0d-2 bvYZTI"><div class="CardNumRating__StyledCardNumRating-sc-17t4b9u-0 cSNjdE"><div class="CardNumRating__CardNumRatingHeader-sc-17t4b9u-1 lhHpkk">QUALITY</div><div class="CardNumRating__CardNumRatingNumber-sc-17t4b9u-2 ERCLc">4.7</div><div class="CardNumRating__CardNumRatingCount-sc-17t4b9u-3 ckSFVh">104 ratings</div></div></div><div class="TeacherCard__CardInfo-syjs0d-1 cwMOi"><div class="CardName__StyledCardName-sc-1gyrgim-0 gGdQEj">Ariel Cuadra</div><div class="CardSchool__StyledCardSchool-sc-19lmz2k-2 irrVnX"><div class="CardSchool__Department-sc-19lmz2k-0 hRJPlj">Ancient Scripture</div><div class="CardSchool__School-sc-19lmz2k-1 bjvHvb">Brigham Young University</div></div><div class="CardFeedback__StyledCardFeedback-lq6nix-0 cLXvfC"><div class="CardFeedback__CardFeedbackItem-lq6nix-1 bqWpYz"><div class="CardFeedback__CardFeedbackNumber-lq6nix-2 iHkSBk">89%</div> would take again</div><div class="VerticalSeparator-sc-1l9ngcr-0 kXhgKB"></div> <div class="CardFeedback__CardFeedbackItem-lq6nix-1 bqWpYz"><div class="CardFeedback__CardFeedbackNumber-lq6nix-2 iHkSBk">2.3</div> level of difficulty</div></div></div></div><button data-tooltip="true" data-tip="Save Professor" data-for="GLOBAL_TOOLTIP" alt="Bookmark" class="TeacherBookmark__StyledTeacherBookmark-sc-17dr6wh-0 dihavS" type="button" currentitem="false"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="Icons/Bookmark-Outline"><path id="Mask" fill-rule="evenodd" clip-rule="evenodd" d="M7 3H17C18.1 3 19 3.9 19 5V21L12 17L5 21L5.01 5C5.01 3.9 5.9 3 7 3ZM12 14.82L17 18V5H7V18L12 14.82Z" fill="#7e7e7e"></path></g></svg></button></a>
                 const infoPageURLMatch = [...html.matchAll(/TeacherCard__StyledTeacherCard-syjs0d-0 eerjaA" href="\/professor\/(\d+)"/g)];
-                console.log(infoPageURLMatch);
-                // const infoPageURLMatch = [...html.matchAll(/TeacherCard__StyledTeacherCard-syjs0d-0[^>]*href="([^"]+)"/g)][index];
-                // console.log("Info Page URL Match:", infoPageURLMatch);
+                
                 if (infoPageURLMatch[index] && infoPageURLMatch[index][1]) {
                     professorData.url = `https://www.ratemyprofessors.com/professor/${infoPageURLMatch[index][1]}`;
                 }
