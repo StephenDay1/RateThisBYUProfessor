@@ -63,7 +63,9 @@ async function get_rating(elements) {
                     };
 
                     // 2. Cache the entire flattened object
-                    await chrome.storage.local.set({ [professorName]: professorData });
+                    if (professorData && professorData.rating && professorData.rating !== "N/A") {
+                        await chrome.storage.local.set({ [professorName]: professorData });
+                    }
                 } catch (err) {
                     console.error("Error communicating with background script:", err);
                     score = 0;
@@ -172,7 +174,17 @@ async function tryFindingProfessors() {
     const fragment = window.location.hash.substring(1);
     if (fragment === "/") {
         // Dashboard / Home page
-        await get_rating(document.querySelectorAll(".cdSectionRoot > :nth-child(3)"));
+        // Check if registering for future term or viewing past term.
+        const classListingElements = document.querySelector(".cdSectionRoot");
+        if (!classListingElements) {
+            return;
+        }
+        const isRegistrationForFuture = classListingElements.closest('.cdRegCartDraggable') !== null;
+        if (isRegistrationForFuture) {
+            await get_rating(document.querySelectorAll(".cdSectionRoot > :nth-child(3 of .verticallyCentered)"));
+        } else {
+            await get_rating(document.querySelectorAll(".cdSectionRoot > :nth-child(3)"));
+        }
     } else if (fragment.includes("chooseASection")) {
         // Registration / Class search
         await get_rating(document.querySelectorAll(".sectionDetailsCol > h4"));
