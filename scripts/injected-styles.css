@@ -1,17 +1,49 @@
 .rating-popup {
     position: absolute;
-    bottom: 100%;
-    left: 0;
-    width: 100%;
-    /* margin-bottom: 5px; */
+    z-index: 1000;
+    transform: translate(60%, -50%);
+    width: max-content;
+    height: fit-content;
     background-color: #f7f7f7;
-    /* border: 1px solid #ccc; */
+    border: 1px solid #e6e9f1;
     border-radius: 4px;
     padding: 8px;
     opacity: 0;
     transition: opacity 0.3s ease-in-out 0.1s;
     display: none;
     color: #000;
+    gap: 10px;
+}
+
+.score-box {
+    flex: 3;
+    font-size: 24px;
+    font-weight: bolder;
+    color: #000;
+    /* padding: 4px 8px; */
+    /* height: 60px; */
+    display: block;
+    text-align: center;
+    align-content: center;
+    border-radius: 4px;
+    display: inline-block;
+    aspect-ratio: 1 / 1;
+}
+
+.info-panel {
+    flex: 6;       /* Takes up 1/4 of the width */
+    display: flex;
+    flex-direction: column; /* Stack children vertically */
+    gap: 10px;
+}
+
+.info-item {
+    font-size: 8px;
+    flex: 1;       /* Forces the 3 divs to share height equally */
+    background-color: #2ecc71;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .professor-name {
