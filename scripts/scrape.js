@@ -16,158 +16,223 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
-async function fetchRating(name) {
-    const queryName = encodeURIComponent(name);
-    const queryURL = `https://www.ratemyprofessors.com/search/professors/?q=${queryName}`;
 
+async function fetchRating(fullName) {
+    const endpoint = "https://www.ratemyprofessors.com/graphql";
+    const schoolID = "U2Nob29sLTEzNQ=="; // BYU's ID
+
+    const nameParts = fullName.trim().split(/\s+/);
+    const firstName = nameParts[0].toLowerCase();
+    const lastName = nameParts[nameParts.length - 1].toLowerCase();
+const rmpSearch = async (searchText) => {
     try {
-        const response = await fetch(queryURL, {
-            method: 'GET',
+        const response = await fetch(endpoint, {
+            method: 'POST',
             headers: {
-                // 2026 "Human-Like" Headers
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Sec-Fetch-Dest': 'document',
-                'Sec-Fetch-Mode': 'navigate',
-                'Sec-Fetch-Site': 'none',
-                'Sec-Fetch-User': '?1',
-                'Upgrade-Insecure-Requests': '1'
-            }
+                'Content-Type': 'application/json',
+                'Authorization': 'Basic d2ViOndlYg==',
+                'Referer': 'https://www.ratemyprofessors.com/',
+            },
+            body: JSON.stringify({
+                // CHANGED: "search" is now "newSearch"
+                "query": `query TeacherSearchPaginationQuery($count: Int!, $query: TeacherSearchQuery!) {
+                    newSearch {
+                        teachers(query: $query, first: $count) {
+                            edges {
+                                node {
+                                    id
+                                    firstName
+                                    lastName
+                                    avgRating
+                                    numRatings
+                                    avgDifficulty
+                                    wouldTakeAgainPercent
+                                    school { name }
+                                }
+                            }
+                        }
+                    }
+                }`,
+                "variables": {
+                    "count": 20,
+                    "query": {
+                        "text": searchText,
+                        "schoolID": "U2Nob29sLTEzNQ==", // BYU ID
+                        "fallback": true 
+                    }
+                }
+            })
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP Error ${response.status}`);
+        const result = await response.json();
+        
+        // CHANGED: Access result.data.newSearch instead of search
+        if (!result || !result.data || !result.data.newSearch) {
+            console.error("GraphQL Error:", result.errors);
+            return [];
         }
 
-        const html = await response.text();
+        return result.data.newSearch.teachers.edges;
+    } catch (err) {
+        console.error("Fetch failed:", err);
+        return [];
+    }
+};
 
-        professorData = {
-            rating: "N/A",
-            // url: "N/A", // just leave null
-            difficulty: "N/A",
-            wouldTakeAgain: "N/A",
-            numRatings: "N/A",
-            tags: []
-        }
+    // --- LOGIC FLOW ---
+    // 1. Try Full Name (e.g., "Mike P Jones")
+    let results = await rmpSearch(fullName);
 
-        resultDivs = [...html.matchAll(/CardSchool__School-sc-19lmz2k-1 bjvHvb[^>]*>([\s\S]*?)<\/div>/g)];
+    // 2. Fallback to Last Name (e.g., "Jones") if no exact match
+    if (results.length === 0) {
+        results = await rmpSearch(lastName);
+    }
 
-        for (let index = 0; index < resultDivs.length; index++) {
-            const divContent = resultDivs[index][1];
-            console.log(`Checking div ${index}:`, resultDivs[index][1]);
-            if (divContent.toLowerCase().includes("brigham young university")) {
-                // Extract info page URL
-                // <a class="TeacherCard__StyledTeacherCard-syjs0d-0 eerjaA" href="/professor/2918231"><div class="TeacherCard__InfoRatingWrapper-syjs0d-3 kAxNBg"><div class="TeacherCard__NumRatingWrapper-syjs0d-2 bvYZTI"><div class="CardNumRating__StyledCardNumRating-sc-17t4b9u-0 cSNjdE"><div class="CardNumRating__CardNumRatingHeader-sc-17t4b9u-1 lhHpkk">QUALITY</div><div class="CardNumRating__CardNumRatingNumber-sc-17t4b9u-2 ERCLc">4.7</div><div class="CardNumRating__CardNumRatingCount-sc-17t4b9u-3 ckSFVh">104 ratings</div></div></div><div class="TeacherCard__CardInfo-syjs0d-1 cwMOi"><div class="CardName__StyledCardName-sc-1gyrgim-0 gGdQEj">Ariel Cuadra</div><div class="CardSchool__StyledCardSchool-sc-19lmz2k-2 irrVnX"><div class="CardSchool__Department-sc-19lmz2k-0 hRJPlj">Ancient Scripture</div><div class="CardSchool__School-sc-19lmz2k-1 bjvHvb">Brigham Young University</div></div><div class="CardFeedback__StyledCardFeedback-lq6nix-0 cLXvfC"><div class="CardFeedback__CardFeedbackItem-lq6nix-1 bqWpYz"><div class="CardFeedback__CardFeedbackNumber-lq6nix-2 iHkSBk">89%</div> would take again</div><div class="VerticalSeparator-sc-1l9ngcr-0 kXhgKB"></div> <div class="CardFeedback__CardFeedbackItem-lq6nix-1 bqWpYz"><div class="CardFeedback__CardFeedbackNumber-lq6nix-2 iHkSBk">2.3</div> level of difficulty</div></div></div></div><button data-tooltip="true" data-tip="Save Professor" data-for="GLOBAL_TOOLTIP" alt="Bookmark" class="TeacherBookmark__StyledTeacherBookmark-sc-17dr6wh-0 dihavS" type="button" currentitem="false"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><g id="Icons/Bookmark-Outline"><path id="Mask" fill-rule="evenodd" clip-rule="evenodd" d="M7 3H17C18.1 3 19 3.9 19 5V21L12 17L5 21L5.01 5C5.01 3.9 5.9 3 7 3ZM12 14.82L17 18V5H7V18L12 14.82Z" fill="#7e7e7e"></path></g></svg></button></a>
-                const infoPageURLMatch = [...html.matchAll(/TeacherCard__StyledTeacherCard-syjs0d-0 eerjaA" href="\/professor\/(\d+)"/g)];
-                
-                if (infoPageURLMatch[index] && infoPageURLMatch[index][1]) {
-                    professorData.url = `https://www.ratemyprofessors.com/professor/${infoPageURLMatch[index][1]}`;
-                }
+    // 3. Find the best match containing the first name
+    const bestMatch = results.find(t => {
+        const rFirst = t.node.firstName.toLowerCase();
+        const rLast = t.node.lastName.toLowerCase();
 
-                break;
-            }
-        }
+        // 1. Does the first name match? (Handles "Casey" vs "Casey Paul")
+        const firstMatch = rFirst.includes(firstName) || firstName.includes(rFirst);
 
+        // 2. Does the last name match? (Handles "Griffiths" vs "Griffiths-Staten")
+        const lastMatch = rLast.includes(lastName) || lastName.includes(rLast);
 
-        
-        // const schoolMatch = [...html.matchAll(/CardSchool__School-sc-19lmz2k-1[^>]*>([^<]+)</g)];
-        // let index = 0;
-        // for (index = 0; index < schoolMatch.length; index++) {
-        //     const match = schoolMatch[index];
-        //     if (match[1].toLowerCase().includes("brigham young university")) {
-        //         professorData.school = match[1].trim();
-        //         break;
-        //     }
-        // }
-        // console.log("School Match:", schoolMatch);
-        // // if (schoolMatch && schoolMatch[index] && schoolMatch[index][1]) {
-        // //     professorData.school = schoolMatch[index][1].trim();
-        // // }
-        
-        // const ratingMatch = [...html.matchAll(/CardNumRating__CardNumRatingNumber-sc-17t4b9u-2[^>]*>([\d.]+)</g)][index];
-        
-        // if (ratingMatch && ratingMatch[1]) {
-        //     professorData.rating = ratingMatch[1];
-        // }
+        return firstMatch && lastMatch;
+    });
 
-        // infoPageURLMatch = [...html.matchAll(/TeacherCard__StyledTeacherCard-syjs0d-0[^>]*href="([^"]+)"/g)][index];
-        // return infoPageURLMatch[1];
-        if (professorData.url && professorData.url !== "N/A") {
-            console.log("Professor Info Page URL:", professorData.url);
+    if (!bestMatch) return { rating: "N/A" };
 
+    const n = bestMatch.node;
+    return {
+        rating: n.avgRating || "N/A",
+        difficulty: n.avgDifficulty || "N/A",
+        wouldTakeAgain: n.wouldTakeAgainPercent > 0 ? `${Math.round(n.wouldTakeAgainPercent)}%` : "N/A",
+        numRatings: n.numRatings || 0,
+        url: `https://www.ratemyprofessors.com/professor/${n.id}`
+    };
+}
+async function fetchRating(fullName) {
+    const endpoint = "https://www.ratemyprofessors.com/graphql";
+    const schoolID = "U2Nob29sLTEzNQ=="; // BYU (Change to U2Nob29sLTE0NDI= for UVU)
 
-            const infoPageURL = `${professorData.url}`;
-            const infoResponse = await fetch(infoPageURL, {
-                method: 'GET',
+    // 1. CLEAN THE NAME
+    // Removes middle initials: "Mike P Jones" -> "Mike Jones"
+    const cleanSearchName = fullName.replace(/\s[A-Z]\s/gi, ' ').trim();
+    const nameParts = cleanSearchName.split(/\s+/);
+    
+    if (nameParts.length < 2) return { rating: "N/A", message: "Invalid Name" };
+
+    const firstName = nameParts[0].toLowerCase();
+    const lastName = nameParts[nameParts.length - 1].toLowerCase();
+
+    // INTERNAL HELPER: The GraphQL Request
+    const rmpSearch = async (searchText) => {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
                 headers: {
-                    // 2026 "Human-Like" Headers
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-                    'Accept-Language': 'en-US,en;q=0.9',
-                    'Sec-Fetch-Dest': 'document',
-                    'Sec-Fetch-Mode': 'navigate',
-                    'Sec-Fetch-Site': 'none',
-                    'Sec-Fetch-User': '?1',
-                    'Upgrade-Insecure-Requests': '1'
-                }
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Basic d2ViOndlYg==',
+                    'Referer': 'https://www.ratemyprofessors.com/',
+                },
+                body: JSON.stringify({
+                    "query": `query TeacherSearchPaginationQuery($count: Int!, $query: TeacherSearchQuery!) {
+                        newSearch {
+                            teachers(query: $query, first: $count) {
+                                edges {
+                                    node {
+                                        id
+                                        firstName
+                                        lastName
+                                        avgRating
+                                        numRatings
+                                        avgDifficulty
+                                        wouldTakeAgainPercent
+                                        department
+                                        school { name }
+                                    }
+                                }
+                            }
+                        }
+                    }`,
+                    "variables": {
+                        "count": 50, // Higher count to ensure we find "G Lloyd" among all Lloyds
+                        "query": {
+                            "text": searchText,
+                            "schoolID": schoolID,
+                            "fallback": true 
+                        }
+                    }
+                })
             });
 
-            if (infoResponse.ok) {
-                const infoHTML = await infoResponse.text();
+            const result = await response.json();
+            if (!result || !result.data || !result.data.newSearch) return [];
+            return result.data.newSearch.teachers.edges;
+        } catch (err) {
+            console.error("GraphQL Fetch Error:", err);
+            return [];
+        }
+    };
 
-                // <div class="RatingValue__Numerator-qw8sqy-2 duhvlP">4.7</div>
-                const ratingMatch = infoHTML.match(/RatingValue__Numerator-qw8sqy-2[^>]*>([\d.]+)</);
-                if (ratingMatch && ratingMatch[1]) {
-                    professorData.rating = ratingMatch[1];
-                }
+    try {
+        // --- STEP 1: Broad Search ---
+        // We search by Last Name immediately to ensure we catch "G Lloyd" 
+        // who RMP might only know as "Scott Lloyd"
+        let results = await rmpSearch(lastName);
 
-                const descriptionMatch = infoHTML.match(/TeacherInfo__TeacherInfoContainer-sc-1h7j6kz-0[^>]*>([\s\S]*?)<\/div>/);
-                if (descriptionMatch && descriptionMatch[1]) {
-                    professorData.description = descriptionMatch[1].trim();
-                }
+        // --- STEP 2: Advanced Filtering ---
+        const bestMatch = results.find(t => {
+            const rFirst = t.node.firstName.toLowerCase();
+            const rLast = t.node.lastName.toLowerCase();
+            
+            // Normalize names (remove spaces/hyphens) for "Xianjin" vs "Xian Jin"
+            const normRFirst = rFirst.replace(/[\s-]/g, '');
+            const normSearchFirst = firstName.replace(/[\s-]/g, '');
 
-                const feedbackMatches = [...infoHTML.matchAll(/FeedbackItem__FeedbackNumber-uof32n-1[^>]*>([\d.]+%?)</g)];
+            // MATCHING CRITERIA:
+            
+            // A. Last Name must match
+            const lastMatch = rLast.includes(lastName) || lastName.includes(rLast);
+            if (!lastMatch) return false;
 
-                const wouldTakeAgainMatch = feedbackMatches.find(m => m[1].includes('%'));
-                if (wouldTakeAgainMatch) {
-                    professorData.wouldTakeAgain = wouldTakeAgainMatch[1];
-                }
+            // B. First Name Fuzzy Match ("Xianjin" match)
+            const fuzzyFirstMatch = normRFirst.includes(normSearchFirst) || 
+                                   normSearchFirst.includes(normRFirst);
 
-                const difficultyMatch = feedbackMatches.find(m => !m[1].includes('%'));
-                if (difficultyMatch) {
-                    professorData.difficulty = difficultyMatch[1];
-                }
+            // C. Initial Match ("G Lloyd" match)
+            // Checks if the MyMap first name is just an initial of the RMP first name
+            const isInitialMatch = firstName.length === 1 && rFirst.startsWith(firstName);
 
-                // TeacherRatingTabs__StyledTab-pnmswv-2
-                const numRatingsMatch = infoHTML.match(/TeacherRatingTabs__StyledTab-pnmswv-2[^>]*>(\d+)</);
-                // console.log("Num Ratings Match:", numRatingsMatch);
-                if (numRatingsMatch && numRatingsMatch[1]) {
-                    professorData.numRatings = numRatingsMatch[1];
-                }
+            return fuzzyFirstMatch || isInitialMatch;
+        });
 
-                // <span class="Tag-bs9vf4-0 bmtbjB">Amazing lectures </span>
-                // <div class="TeacherTags__TagsContainer-sc-16vmh1y-0 kJSpQS"><span class="Tag-bs9vf4-0 bmtbjB">Amazing lectures </span><span class="Tag-bs9vf4-0 bmtbjB">Caring</span><span class="Tag-bs9vf4-0 bmtbjB">Hilarious</span><span class="Tag-bs9vf4-0 bmtbjB">Inspirational</span><span class="Tag-bs9vf4-0 bmtbjB">Participation matters</span></div>
-                const tagsMatches = [...infoHTML.matchAll(/<span class="Tag-bs9vf4-0[^>]*>([^<]+)</g)];
-                professorData.tags = tagsMatches.map(match => match[1].split('<')[0].trim());
-
-                occurences = {};
-                professorData.tags.forEach(tag => {
-                    occurences[tag] = (occurences[tag] || 0) + 1;
-                });
-
-                professorData.tags = Object.keys(occurences).filter(tag => occurences[tag] > 1);
-
-            }
-        } else {
-            professorData.url = queryURL;
+        // --- STEP 3: Return Formatting ---
+        if (!bestMatch) {
+            return { rating: "N/A", message: "No matching professor found" };
         }
 
-        return professorData;
+        const node = bestMatch.node;
+        // 1. Decode the "weird code" (Base64)
+        // "VGVhY2hlci0yNzExMDk3" becomes "Teacher-2711097"
+        const decodedId = atob(node.id); 
 
+        // 2. Extract just the numbers
+        const legacyId = decodedId.split('-')[1];
+        return {
+            rating: node.avgRating !== 0 ? node.avgRating : "N/A",
+            difficulty: node.avgDifficulty !== 0 ? node.avgDifficulty : "N/A",
+            wouldTakeAgain: node.wouldTakeAgainPercent > 0 ? `${Math.round(node.wouldTakeAgainPercent)}%` : "N/A",
+            numRatings: node.numRatings || 0,
+            department: node.department || "N/A",
+            url: `https://www.ratemyprofessors.com/professor/${legacyId}`,
+            matchedName: `${node.firstName} ${node.lastName}` // For your console debugging
+        };
 
     } catch (error) {
-        console.error("Scrape internal error:", error);
-        throw error; // Rethrow to be caught by the .catch in the listener
+        console.error("Scrape Process Error:", error);
+        return { rating: "Error", message: error.message };
     }
 }
