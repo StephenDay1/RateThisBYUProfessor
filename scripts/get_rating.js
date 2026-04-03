@@ -28,21 +28,30 @@ async function get_rating(elements) {
             const professorCachedData = await chrome.storage.local.get(professorName);
             
             let professorData = null;
-            // If we have data for this professor, use it. We could also check the date to see if it's stale.
+            let needsUpdate = true;
+
+            // If we have data for this professor, check if it's stale.
             if (Object.keys(professorCachedData).length > 0) {
                 const storedEntry = professorCachedData[professorName];
-                // If data is older than 3 days, we could flag it, but for now, we use it
-                if (storedEntry.date && (Date.now() - storedEntry.date > 1000 * 60 * 60 * 24 * 3)) {
-                    console.log(`${professorName}: Cached data is older than 3 days.`);
+                // If data is older than 3 days, we update it
+                const daysTilStale = 7;
+                if (storedEntry.date && (Date.now() - storedEntry.date > 1000 * 60 * 60 * 24 * daysTilStale)) {
+                    // console.log(`${professorName}: Cached data is older than ${daysTilStale} days. Updating...`);
+                } else {
+                    professorData = storedEntry;
+                    needsUpdate = false;
+                    // console.log(`Using cached data for ${professorName}:`, professorData);
                 }
-                // score = storedEntry.score;
-                professorData = storedEntry;
-                console.log(`Using cached data for ${professorName}:`, professorData);
-            } else {
+            }
+            
+            if (needsUpdate) {
                 // 2. Fetch from RateMyProfessors via the Background Script
                 console.log(`Searching RMP for: ${professorName}`);
                 
                 try {
+                    // 20ms delay to obey RMP robots.txt crawl-delay
+                    await new Promise(resolve => setTimeout(resolve, 20));
+
                     const rawResponse = await new Promise((resolve) => {
                         chrome.runtime.sendMessage(
                             { action: "findProfessor", name: professorName },
@@ -61,6 +70,10 @@ async function get_rating(elements) {
                                 : 0,
                         ...ratingData // This "spreads" all keys (id, department, url, etc.) into professorData
                     };
+
+                    professorData.url = professorData.url || `https://www.ratemyprofessors.com/search/professors?q=${encodeURIComponent(professorName)}&sid=135`; // Fallback to search URL if direct profile URL isn't available
+
+                    console.log(`URL: ${professorData.url} | Rating for ${professorName}:`, professorData);
 
                     // 2. Cache the entire flattened object
                     if (professorData && professorData.rating && professorData.rating !== "N/A") {
