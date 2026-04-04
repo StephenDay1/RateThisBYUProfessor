@@ -104,6 +104,11 @@ async function get_rating(elements) {
             // 5. Create the Popup
             const popup = document.createElement('div');
             popup.classList.add('rating-popup');
+            popup.style.position = 'fixed';
+            popup.style.left = '0px';
+            popup.style.top = '0px';
+            popup.style.transform = 'translate(-50%, -100%)';
+            popup.style.pointerEvents = 'none';
             // popup.textContent = professorData.score > 0 ? `Rating: ${professorData.score} / 5` : "No Rating Found";
             if (professorData.score > 0 && professorData.rating !== "N/A") {
                 const scoreBox = document.createElement('div');
@@ -134,32 +139,28 @@ async function get_rating(elements) {
 
             // 6. Interaction Listeners
             let timeout;
-            const showPopup = () => {
+            const updatePopupPosition = (event) => {
+                const x = event.clientX;
+                const y = event.clientY;
+                popup.style.left = `${x}px`;
+                popup.style.top = `${y - 32}px`;
+            };
+            const showPopup = (event) => {
+                clearTimeout(timeout);
+                updatePopupPosition(event);
                 popup.style.display = "flex";
+                popup.style.opacity = "0";
                 timeout = setTimeout(() => { popup.style.opacity = "1"; }, 10);
             };
             const hidePopup = () => {
                 clearTimeout(timeout);
                 popup.style.opacity = "0";
-                setTimeout(() => { popup.style.display = "none"; }, 400);
+                timeout = setTimeout(() => { popup.style.display = "none"; }, 400);
             };
 
             professorContainer.addEventListener('mouseenter', showPopup);
-            // professorContainer.addEventListener('click', showPopup);
+            professorContainer.addEventListener('mousemove', updatePopupPosition);
             professorContainer.addEventListener('mouseleave', hidePopup);
-
-            // window.addEventListener('mousemove', (e) => {
-            //     // Get mouse coordinaates
-            //     const x = e.pageX;
-            //     const y = e.pageY;
-
-            //     // Apply position
-            //     // Subtract from 'y' to move it ABOVE the cursor
-            //     // Subtract half the width from 'x' to center it horizontally
-            //     // follower.style.left = `${x}px`;
-            //     // follower.style.top = `${y - 40}px`;
-            //     popup.style.transform = `translate3d(${x}px, ${y - 40}px, 0) translateX(-50%)`;
-            // });
 
             // 7. Replace original element in the DOM
             element.replaceWith(professorContainer);
