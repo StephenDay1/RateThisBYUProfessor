@@ -23,60 +23,14 @@ function formatScore(value) {
 }
 
 async function refreshCacheUI() {
-  const cacheCountEl = document.getElementById("cacheCount");
-  const tbody = document.getElementById("cachedProfessorsBody");
-  const hint = document.getElementById("cachedSummaryHint");
+  const button = document.getElementById("clearCacheButton");
 
   const all = await chrome.storage.local.get(null);
-  const keys = Object.keys(all).sort((a, b) =>
-    a.localeCompare(b, undefined, { sensitivity: "base" })
-  );
+  const count = Object.keys(all).length;
 
-  if (cacheCountEl) cacheCountEl.textContent = String(keys.length);
-  if (hint) hint.textContent = keys.length ? `(${keys.length})` : "";
-
-  if (!tbody) return;
-
-  tbody.replaceChildren();
-
-  if (keys.length === 0) {
-    const tr = document.createElement("tr");
-    const td = document.createElement("td");
-    td.colSpan = 3;
-    td.className = "muted";
-    td.textContent = "No cached professors yet. Visit MyMAP to load ratings.";
-    tr.appendChild(td);
-    tbody.appendChild(tr);
-    return;
-  }
-
-  for (const name of keys) {
-    const raw = all[name];
-    let scoreText = "—";
-    let dateText = "—";
-
-    if (raw && typeof raw === "object" && !Array.isArray(raw)) {
-      scoreText = formatScore(raw.score);
-      dateText = formatCachedDate(raw.date);
-    } else if (raw !== undefined) {
-      scoreText = "—";
-      dateText = "—";
-    }
-
-    const tr = document.createElement("tr");
-
-    const tdName = document.createElement("td");
-    tdName.textContent = name;
-
-    const tdScore = document.createElement("td");
-    tdScore.className = "num";
-    tdScore.textContent = scoreText;
-
-    const tdDate = document.createElement("td");
-    tdDate.textContent = dateText;
-
-    tr.append(tdName, tdScore, tdDate);
-    tbody.appendChild(tr);
+  if (button) {
+    button.textContent = `Clear cached ratings (${count})`;
+    button.style.display = count > 0 ? "block" : "none";
   }
 }
 
@@ -107,17 +61,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   try {
     await refreshCacheUI();
   } catch (e) {
-    const tbody = document.getElementById("cachedProfessorsBody");
-    if (tbody) {
-      tbody.replaceChildren();
-      const tr = document.createElement("tr");
-      const td = document.createElement("td");
-      td.colSpan = 3;
-      td.className = "muted";
-      td.textContent = `Could not read cache: ${e?.message ?? String(e)}`;
-      tr.appendChild(td);
-      tbody.appendChild(tr);
-    }
+    const button = document.getElementById("clearCacheButton");
+    if (button) button.style.display = "none";
     setStatus(`Could not read cache: ${e?.message ?? String(e)}`);
   }
 

@@ -5,41 +5,11 @@
     <body>
         <h1>Rate This BYU Professor</h1>
         <p class="subtitle">Not affiliated with BYU or Rate My Professors.</p>
-
-        <div class="card">
-            <div class="row">
-                <div class="label">Cached professor ratings</div>
-                <div class="value" id="cacheCount">—</div>
-            </div>
-
-            <details class="details">
-                <summary>
-                    Cached professors
-                    <span class="summaryHint" id="cachedSummaryHint"></span>
-                </summary>
-                <div class="tableWrap">
-                    <table class="table" aria-label="Cached professor ratings">
-                        <thead>
-                            <tr>
-                                <th>Professor</th>
-                                <th class="num">Score</th>
-                                <th>Date cached</th>
-                            </tr>
-                        </thead>
-                        <tbody id="cachedProfessorsBody">
-                            <tr>
-                                <td colspan="3" class="muted">Loading…</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </details>
-
-            <button id="clearCacheButton" class="danger" type="button">
-                Clear cached ratings
-            </button>
-            <p id="status" class="status" aria-live="polite"></p>
-        </div>
+        
+        <button id="clearCacheButton" type="button">
+            Clear cached ratings
+        </button>
+        <p id="status" class="status" aria-live="polite"></p>
         <script src="popup.js"></script>
     </body>
 </html>
