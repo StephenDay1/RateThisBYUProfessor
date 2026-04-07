@@ -5,7 +5,7 @@ A simple Chrome extension adding integration of Rate My Professors into BYU's My
 
 ![Image](./images/ClassList.png)
 
-## Easily pick out your schedle for next semester
+## Easily pick out your schedule for next semester
 
 ![Image](./images/ChooseASection.png)
 
