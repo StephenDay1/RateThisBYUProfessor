@@ -129,7 +129,7 @@ async function get_rating(elements) {
                 const detailsBox = document.createElement('div');
                 detailsBox.classList.add('info-panel');
                 detailsBox.innerHTML = `
-                <h5 className="info-item">No Rating Found</h5>
+                <h5 className="info-item" style="text-align: center;">No Rating Found</h5>
                 <div className="info-item">We couldn't find this professor, but you can click on their name to search for yourself!</div>
                 `;
                 popup.appendChild(detailsBox);

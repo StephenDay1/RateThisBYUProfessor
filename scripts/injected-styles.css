@@ -3,7 +3,7 @@
     z-index: 1000;
     transform: translate(60%, -50%);
     width: max-content;
-    max-width: 250px;
+    width: 260px;
     height: fit-content;
     background-color: #f7f7f7;
     border: 1px solid #e6e9f1;
@@ -32,9 +32,10 @@
 }
 
 .info-panel {
-    flex: 6;       /* Takes up 1/4 of the width */
+    flex: 7;       /* Takes up 1/4 of the width */
     display: flex;
     flex-direction: column; /* Stack children vertically */
+    justify-content: space-between;
     gap: 10px;
 }
 
