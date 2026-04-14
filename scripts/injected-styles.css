@@ -2,7 +2,7 @@
     position: fixed;
     z-index: 1000;
     width: 260px;
-    background-color: #f7f7f7;
+    background-color: #fff;
     border: 1px solid #e6e9f1;
     border-radius: 6px;
     padding: 12px;
@@ -61,7 +61,7 @@
 
 .tag {
     font-size: 10px;
-    background-color: #edeef4;
+    background-color: #f7f7f7;
     color: #333;
     padding: 2px 8px;
     border-radius: 10px;
