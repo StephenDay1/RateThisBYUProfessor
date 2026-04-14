@@ -47,6 +47,11 @@ const rmpSearch = async (searchText) => {
                                     numRatings
                                     avgDifficulty
                                     wouldTakeAgainPercent
+                                    department
+                                    teacherRatingTags {
+                                        tagName
+                                        tagCount
+                                    }
                                     school { name }
                                 }
                             }
@@ -57,7 +62,7 @@ const rmpSearch = async (searchText) => {
                     "count": 20,
                     "query": {
                         "text": searchText,
-                        "schoolID": "U2Nob29sLTEzNQ==", // BYU ID
+                        "schoolID": schoolID, // BYU ID
                         "fallback": true 
                     }
                 }
@@ -113,6 +118,7 @@ const rmpSearch = async (searchText) => {
         url: `https://www.ratemyprofessors.com/professor/${n.id}`
     };
 }
+
 async function fetchRating(fullName) {
     const endpoint = "https://www.ratemyprofessors.com/graphql";
     const schoolID = "U2Nob29sLTEzNQ=="; // BYU (Change to U2Nob29sLTE0NDI= for UVU)
@@ -151,6 +157,10 @@ async function fetchRating(fullName) {
                                         avgDifficulty
                                         wouldTakeAgainPercent
                                         department
+                                        teacherRatingTags {
+                                            tagName
+                                            tagCount
+                                        }
                                         school { name }
                                     }
                                 }
@@ -218,17 +228,23 @@ async function fetchRating(fullName) {
         // 1. Decode the "weird code" (Base64)
         // "VGVhY2hlci0yNzExMDk3" becomes "Teacher-2711097"
         const decodedId = atob(node.id); 
-
         // 2. Extract just the numbers
         const legacyId = decodedId.split('-')[1];
+
+        // 1. Sort tags by frequency (highest count first)
+        const sortedTags = node.teacherRatingTags 
+            ? [...node.teacherRatingTags].sort((a, b) => b.tagCount - a.tagCount)
+            : [];
+
         return {
             rating: node.avgRating !== 0 ? node.avgRating : "N/A",
             difficulty: node.avgDifficulty !== 0 ? node.avgDifficulty : "N/A",
             wouldTakeAgain: node.wouldTakeAgainPercent > 0 ? `${Math.round(node.wouldTakeAgainPercent)}%` : "N/A",
             numRatings: node.numRatings || 0,
+            tags: sortedTags.map(t => t.tagName), 
             department: node.department || "N/A",
             url: `https://www.ratemyprofessors.com/professor/${legacyId}`,
-            matchedName: `${node.firstName} ${node.lastName}` // For your console debugging
+            matchedName: `${node.firstName} ${node.lastName}`
         };
 
     } catch (error) {

@@ -104,36 +104,35 @@ async function get_rating(elements) {
             // 5. Create the Popup
             const popup = document.createElement('div');
             popup.classList.add('rating-popup');
-            popup.style.position = 'fixed';
-            popup.style.left = '0px';
-            popup.style.top = '0px';
-            popup.style.transform = 'translate(-50%, -100%)';
-            popup.style.pointerEvents = 'none';
-            // popup.textContent = professorData.score > 0 ? `Rating: ${professorData.score} / 5` : "No Rating Found";
+
             if (professorData.score > 0 && professorData.rating !== "N/A") {
-                const scoreBox = document.createElement('div');
-                scoreBox.classList.add('score-box');
-                scoreBox.textContent = professorData.score > 0 ? professorData.score.toFixed(1) : "N/A";
-                scoreBox.style.backgroundColor = color;
-                popup.appendChild(scoreBox);
+                // Generate Tags HTML only if they exist
+                const tagsHTML = (professorData.tags && professorData.tags.length > 0) 
+                    ? `<div class="tags-box">
+                        ${professorData.tags.slice(0, 3).map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>` 
+                    : '';
 
-                const detailsBox = document.createElement('div');
-                detailsBox.classList.add('info-panel');
-                detailsBox.innerHTML = `
-                    <div className="info-item"><strong>Difficulty:</strong> ${professorData.difficulty || "N/A"}</div>
-                    <div className="info-item"><strong>Would Take Again:</strong> ${professorData.wouldTakeAgain || "N/A"}</div>
-                    <div className="info-item">Based on ${professorData.numRatings} ratings.</div>
+                popup.innerHTML = `
+                    <div class="popup-top-row">
+                        <div class="score-box" style="background-color: ${color};">
+                            ${professorData.score.toFixed(1)}
+                        </div>
+                        <div class="info-panel">
+                            <div class="info-item"><strong>Difficulty:</strong> ${professorData.difficulty}</div>
+                            <div class="info-item"><strong>Would Take Again:</strong> ${professorData.wouldTakeAgain}</div>
+                            <div class="info-item">Based on ${professorData.numRatings} ratings.</div>
+                        </div>
+                    </div>
+                    ${tagsHTML}
                 `;
-                popup.appendChild(detailsBox);
             } else {
-                const detailsBox = document.createElement('div');
-                detailsBox.classList.add('info-panel');
-                detailsBox.innerHTML = `
-                <h5 className="info-item" style="text-align: center;">No Rating Found</h5>
-                <div className="info-item">We couldn't find this professor, but you can click on their name to search for yourself!</div>
+                popup.innerHTML = `
+                    <div class="info-panel" style="text-align: center;">
+                        <h5 style="margin: 0 0 5px 0;">No Rating Found</h5>
+                        <div style="font-size: 10px;">Click name to search manually.</div>
+                    </div>
                 `;
-                popup.appendChild(detailsBox);
-
             }
             professorContainer.appendChild(popup);
 
