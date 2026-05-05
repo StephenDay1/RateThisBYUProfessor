@@ -17,111 +17,30 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 });
 
 
-async function fetchRating(fullName) {
-    const endpoint = "https://www.ratemyprofessors.com/graphql";
-    const schoolID = "U2Nob29sLTEzNQ=="; // BYU's ID
+const DEBUG_LOGS = false;
 
-    const nameParts = fullName.trim().split(/\s+/);
-    const firstName = nameParts[0].toLowerCase();
-    const lastName = nameParts[nameParts.length - 1].toLowerCase();
-const rmpSearch = async (searchText) => {
-    try {
-        const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': 'Basic d2ViOndlYg==',
-                'Referer': 'https://www.ratemyprofessors.com/',
-            },
-            body: JSON.stringify({
-                // CHANGED: "search" is now "newSearch"
-                "query": `query TeacherSearchPaginationQuery($count: Int!, $query: TeacherSearchQuery!) {
-                    newSearch {
-                        teachers(query: $query, first: $count) {
-                            edges {
-                                node {
-                                    id
-                                    firstName
-                                    lastName
-                                    avgRating
-                                    numRatings
-                                    avgDifficulty
-                                    wouldTakeAgainPercent
-                                    department
-                                    teacherRatingTags {
-                                        tagName
-                                        tagCount
-                                    }
-                                    school { name }
-                                }
-                            }
-                        }
-                    }
-                }`,
-                "variables": {
-                    "count": 20,
-                    "query": {
-                        "text": searchText,
-                        "schoolID": schoolID, // BYU ID
-                        "fallback": true 
-                    }
-                }
-            })
-        });
-
-        const result = await response.json();
-        
-        // CHANGED: Access result.data.newSearch instead of search
-        if (!result || !result.data || !result.data.newSearch) {
-            console.error("GraphQL Error:", result.errors);
-            return [];
-        }
-
-        return result.data.newSearch.teachers.edges;
-    } catch (err) {
-        console.error("Fetch failed:", err);
-        return [];
+function debugLog(...args) {
+    if (DEBUG_LOGS) {
+        console.log(...args);
     }
-};
+}
 
-    // --- LOGIC FLOW ---
-    // 1. Try Full Name (e.g., "Mike P Jones")
-    let results = await rmpSearch(fullName);
-
-    // 2. Fallback to Last Name (e.g., "Jones") if no exact match
-    if (results.length === 0) {
-        results = await rmpSearch(lastName);
-    }
-
-    // 3. Find the best match containing the first name
-    const bestMatch = results.find(t => {
-        const rFirst = t.node.firstName.toLowerCase();
-        const rLast = t.node.lastName.toLowerCase();
-
-        // 1. Does the first name match? (Handles "Casey" vs "Casey Paul")
-        const firstMatch = rFirst.includes(firstName) || firstName.includes(rFirst);
-
-        // 2. Does the last name match? (Handles "Griffiths" vs "Griffiths-Staten")
-        const lastMatch = rLast.includes(lastName) || lastName.includes(rLast);
-
-        return firstMatch && lastMatch;
-    });
-
-    if (!bestMatch) return { rating: "N/A" };
-
-    const n = bestMatch.node;
-    return {
-        rating: n.avgRating || "N/A",
-        difficulty: n.avgDifficulty || "N/A",
-        wouldTakeAgain: n.wouldTakeAgainPercent > 0 ? `${Math.round(n.wouldTakeAgainPercent)}%` : "N/A",
-        numRatings: n.numRatings || 0,
-        url: `https://www.ratemyprofessors.com/professor/${n.id}`
-    };
+function normalizeScore(value, decimals = 1) {
+    if (value == null) return null;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric === 0) return null;
+    const factor = 10 ** decimals;
+    return Math.round((numeric + Number.EPSILON) * factor) / factor;
 }
 
 async function fetchRating(fullName) {
     const endpoint = "https://www.ratemyprofessors.com/graphql";
     const schoolID = "U2Nob29sLTEzNQ=="; // BYU (Change to U2Nob29sLTE0NDI= for UVU)
+    const requestHeaders = {
+        'Content-Type': 'application/json',
+        'Authorization': 'Basic d2ViOndlYg==',
+        'Referer': 'https://www.ratemyprofessors.com/',
+    };
 
     // 1. CLEAN THE NAME
     // Removes middle initials: "Mike P Jones" -> "Mike Jones"
@@ -138,11 +57,7 @@ async function fetchRating(fullName) {
         try {
             const response = await fetch(endpoint, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': 'Basic d2ViOndlYg==',
-                    'Referer': 'https://www.ratemyprofessors.com/',
-                },
+                headers: requestHeaders,
                 body: JSON.stringify({
                     "query": `query TeacherSearchPaginationQuery($count: Int!, $query: TeacherSearchQuery!) {
                         newSearch {
@@ -179,12 +94,142 @@ async function fetchRating(fullName) {
             });
 
             const result = await response.json();
+
+            debugLog("rmpSearch result:", result);
+
             if (!result || !result.data || !result.data.newSearch) return [];
             return result.data.newSearch.teachers.edges;
         } catch (err) {
             console.error("GraphQL Fetch Error:", err);
             return [];
         }
+    };
+
+    // INTERNAL HELPER: Fetch full teacher details by global node id
+    const fetchTeacherDetails = async (teacherId) => {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: requestHeaders,
+                body: JSON.stringify({
+                    "query": `query TeacherDetailsById($id: ID!) {
+                        node(id: $id) {
+                            __typename
+                            ... on Teacher {
+                                id
+                                firstName
+                                lastName
+                                avgRatingRounded
+                                avgDifficultyRounded
+                                wouldTakeAgainPercentRounded
+                                numRatings
+                                department
+                                teacherRatingTags {
+                                    tagName
+                                    tagCount
+                                }
+                                ratings(first: 100) {
+                                    edges {
+                                        node {
+                                            ratingTags
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }`,
+                    "variables": {
+                        "id": teacherId
+                    }
+                })
+            });
+
+            const result = await response.json();
+            const teacherNode = result?.data?.node;
+            if (!teacherNode || teacherNode.__typename !== "Teacher") return null;
+            return teacherNode;
+        } catch (err) {
+            console.error("Teacher detail fetch error:", err);
+            return null;
+        }
+    };
+
+    const fetchTeacherTagLookup = async () => {
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: requestHeaders,
+                body: JSON.stringify({
+                    "query": `query TeacherTagsLookup {
+                        teacherTags {
+                            id
+                            name
+                        }
+                    }`
+                })
+            });
+
+            const result = await response.json();
+            const tags = result?.data?.teacherTags;
+            if (!Array.isArray(tags)) return new Map();
+
+            const lookup = new Map();
+            for (const tag of tags) {
+                if (tag?.id && tag?.name) {
+                    lookup.set(String(tag.id), tag.name);
+                }
+            }
+            return lookup;
+        } catch (err) {
+            console.error("Teacher tag lookup fetch error:", err);
+            return new Map();
+        }
+    };
+
+    const buildTagsFromRatings = (ratingEdges, teacherTagLookup = new Map()) => {
+        if (!Array.isArray(ratingEdges)) return [];
+
+        const tagCounts = new Map();
+        for (const edge of ratingEdges) {
+            const raw = edge?.node?.ratingTags;
+            if (!raw || typeof raw !== "string") continue;
+
+            // RMP returns rating tags in different formats depending on endpoint/history.
+            // Support:
+            // - "--1--2--" (delimited IDs)
+            // - "1,2" (comma-separated IDs)
+            // - '["1","2"]' (JSON array)
+            let fromDelimited = [];
+            if (raw.trim().startsWith("[")) {
+                try {
+                    const parsed = JSON.parse(raw);
+                    if (Array.isArray(parsed)) {
+                        fromDelimited = parsed.map(String);
+                    }
+                } catch (jsonErr) {
+                    // Ignore parsing failure and fall through to delimiter heuristics.
+                }
+            }
+
+            if (fromDelimited.length === 0) {
+                fromDelimited = raw.includes("--")
+                    ? raw.split("--")
+                    : raw.split(",");
+            }
+
+            const tags = fromDelimited
+                .map(t => t.trim())
+                .filter(Boolean);
+
+            for (const tagToken of tags) {
+                const mappedName = teacherTagLookup.get(tagToken) || tagToken;
+                tagCounts.set(mappedName, (tagCounts.get(mappedName) || 0) + 1);
+            }
+        }
+
+        return [...tagCounts.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .map(([tagName, tagCount]) => ({ tagName, tagCount }));
     };
 
     try {
@@ -224,7 +269,12 @@ async function fetchRating(fullName) {
             return { rating: "N/A", message: "No matching professor found" };
         }
 
-        const node = bestMatch.node;
+        let node = bestMatch.node;
+        const detailedNode = await fetchTeacherDetails(node.id);
+        if (detailedNode) {
+            node = detailedNode;
+        }
+        const teacherTagLookup = await fetchTeacherTagLookup();
         // 1. Decode the "weird code" (Base64)
         // "VGVhY2hlci0yNzExMDk3" becomes "Teacher-2711097"
         const decodedId = atob(node.id); 
@@ -232,14 +282,23 @@ async function fetchRating(fullName) {
         const legacyId = decodedId.split('-')[1];
 
         // 1. Sort tags by frequency (highest count first)
-        const sortedTags = node.teacherRatingTags 
+        const apiTags = node.teacherRatingTags 
             ? [...node.teacherRatingTags].sort((a, b) => b.tagCount - a.tagCount)
             : [];
+        const fallbackTags = buildTagsFromRatings(node?.ratings?.edges, teacherTagLookup);
+        const sortedTags = apiTags.length > 0 ? apiTags : fallbackTags;
+
+        const normalizedRating =
+            normalizeScore(node.avgRatingRounded) ?? normalizeScore(node.avgRating);
+        const normalizedDifficulty =
+            normalizeScore(node.avgDifficultyRounded) ?? normalizeScore(node.avgDifficulty);
 
         return {
-            rating: node.avgRating !== 0 ? node.avgRating : "N/A",
-            difficulty: node.avgDifficulty !== 0 ? node.avgDifficulty : "N/A",
-            wouldTakeAgain: node.wouldTakeAgainPercent > 0 ? `${Math.round(node.wouldTakeAgainPercent)}%` : "N/A",
+            rating: normalizedRating ?? "N/A",
+            difficulty: normalizedDifficulty ?? "N/A",
+            wouldTakeAgain: node.wouldTakeAgainPercentRounded > 0
+                ? `${Math.round(node.wouldTakeAgainPercentRounded)}%`
+                : (node.wouldTakeAgainPercent > 0 ? `${Math.round(node.wouldTakeAgainPercent)}%` : "N/A"),
             numRatings: node.numRatings || 0,
             tags: sortedTags.map(t => t.tagName), 
             department: node.department || "N/A",
