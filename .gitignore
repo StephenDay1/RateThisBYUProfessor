@@ -1,0 +1,5 @@
+/*
+!.gitignore
+!*.md
+!/src/
+src/.DS_Store
