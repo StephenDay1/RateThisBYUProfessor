@@ -12,15 +12,131 @@ function addCSS(fileName) {
 
 addCSS("scripts/injected-styles.css");
 
-async function get_rating(elements) {
+let sharedRatingPopup = null;
+let sharedPopupHideTimeout = null;
+
+function escapeHTML(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+function getSharedRatingPopup() {
+    if (sharedRatingPopup) {
+        return sharedRatingPopup;
+    }
+
+    sharedRatingPopup = document.createElement("div");
+    sharedRatingPopup.classList.add("rating-popup");
+    sharedRatingPopup.style.position = "fixed";
+    sharedRatingPopup.style.zIndex = "2147483647";
+    sharedRatingPopup.style.pointerEvents = "none";
+    sharedRatingPopup.style.display = "none";
+    sharedRatingPopup.style.opacity = "0";
+    document.body.appendChild(sharedRatingPopup);
+    return sharedRatingPopup;
+}
+
+function renderPopupContent(payload) {
+    const popup = getSharedRatingPopup();
+    const color = payload.score >= 4 ? "#7ff6c3" : payload.score >= 3 ? "#fff170" : payload.score > 0 ? "#ff9c9c" : "#cccccc";
+
+    if (payload.score > 0 && payload.rating !== "N/A") {
+        const tagsHTML = (payload.tags && payload.tags.length > 0)
+            ? `<div class="tags-box">
+                ${payload.tags.slice(0, 3).map((tag) => `<span class="tag">${escapeHTML(tag)}</span>`).join("")}
+            </div>`
+            : "";
+
+        popup.innerHTML = `
+            <div class="popup-top-row">
+                <div class="score-box" style="background-color: ${color};">
+                    ${payload.score.toFixed(1)}
+                </div>
+                <div class="info-panel">
+                    <div class="info-item"><strong>Difficulty:</strong> ${escapeHTML(payload.difficulty || "N/A")}</div>
+                    <div class="info-item"><strong>Would Take Again:</strong> ${escapeHTML(payload.wouldTakeAgain || "N/A")}</div>
+                    <div class="info-item">Based on ${escapeHTML(payload.numRatings || 0)} ratings.</div>
+                </div>
+            </div>
+            ${tagsHTML}
+        `;
+    } else {
+        popup.innerHTML = `
+            <div class="info-panel" style="text-align: center;">
+                <h5 style="margin: 0 0 5px 0;">No Rating Found</h5>
+                <div style="font-size: 10px;">Click name to search manually.</div>
+            </div>
+        `;
+    }
+}
+
+function bindProfessorInteractions(element) {
+    if (element.dataset.rtbypBound === "true") {
+        return;
+    }
+
+    const popup = getSharedRatingPopup();
+
+    const updatePopupPosition = (event) => {
+        popup.style.left = `${event.clientX}px`;
+        popup.style.top = `${event.clientY - 32}px`;
+    };
+
+    const showPopup = (event) => {
+        clearTimeout(sharedPopupHideTimeout);
+        try {
+            const payload = JSON.parse(element.dataset.rtbypPayload || "{}");
+            renderPopupContent(payload);
+            updatePopupPosition(event);
+            popup.style.display = "flex";
+            popup.style.opacity = "0";
+            setTimeout(() => { popup.style.opacity = "1"; }, 10);
+        } catch (err) {
+            console.error("Failed to render popup payload:", err);
+        }
+    };
+
+    const hidePopup = () => {
+        clearTimeout(sharedPopupHideTimeout);
+        popup.style.opacity = "0";
+        sharedPopupHideTimeout = setTimeout(() => { popup.style.display = "none"; }, 400);
+    };
+
+    const openProfessorPage = (event) => {
+        const url = element.dataset.rtbypUrl;
+        if (!url) {
+            return;
+        }
+
+        event.preventDefault();
+        event.stopPropagation();
+        window.open(url, "_blank", "noopener,noreferrer");
+    };
+
+    element.addEventListener("mouseenter", showPopup);
+    element.addEventListener("mousemove", updatePopupPosition);
+    element.addEventListener("mouseleave", hidePopup);
+    element.addEventListener("click", openProfessorPage);
+    element.style.cursor = "pointer";
+    element.dataset.rtbypBound = "true";
+}
+
+async function get_rating(elements, options = {}) {
+    const { force = false } = options;
     observer.disconnect(); // Stop observing while we update the page to avoid infinite loops
     
     for (const element of elements) {
-        if (element.classList.contains('newly-added')) {
+        if (!force && element.classList.contains('newly-added')) {
             continue;
         }
 
-        let professorName = element.textContent.trim();
+        const existingNameSpan = element.querySelector('span');
+        let professorName = (force && existingNameSpan ? existingNameSpan.textContent : element.textContent).trim();
+        console.log("Professor Name:", professorName);
         if (professorName !== "TBD" && professorName !== "") {
             let score = 0;
 
@@ -85,84 +201,45 @@ async function get_rating(elements) {
                 }
             }
 
-            // 4. UI Transformation: Create the new display element
-            const professorContainer = document.createElement('a');
-            if (professorData && professorData.url) {
-                professorContainer.href = professorData.url;
-                professorContainer.target = "_blank"; // Open in new tab
-            }
-            professorContainer.classList.add('professor-name', 'newly-added', 'verticallyCentered');
-            
-            const nameSpan = document.createElement('span');
-            nameSpan.textContent = professorName;
-            professorContainer.appendChild(nameSpan);
-
             // Determine color based on score
-            const color = professorData.score >= 4 ? "#7ff6c3" : professorData.score >= 3 ? "#fff170" : professorData.score > 0 ? "#ff9c9c" : "#cccccc";
-            professorContainer.style.borderLeft = `5px solid ${color}`;
-            
-            // 5. Create the Popup
-            const popup = document.createElement('div');
-            popup.classList.add('rating-popup');
+            const scoreValue = professorData?.score ?? 0;
+            const color = scoreValue >= 4 ? "#7ff6c3" : scoreValue >= 3 ? "#fff170" : scoreValue > 0 ? "#ff9c9c" : "#cccccc";
+            const profileUrl = professorData?.url || `https://www.ratemyprofessors.com/search/professors?q=${encodeURIComponent(professorName)}&sid=135`;
 
-            if (professorData.score > 0 && professorData.rating !== "N/A") {
-                // Generate Tags HTML only if they exist
-                const tagsHTML = (professorData.tags && professorData.tags.length > 0) 
-                    ? `<div class="tags-box">
-                        ${professorData.tags.slice(0, 3).map(tag => `<span class="tag">${tag}</span>`).join('')}
-                    </div>` 
-                    : '';
+            // Temporary fix: preserve BYU's original DOM node so semester switching can update text.
+            // Only apply visual score indicators to the existing element.
+            element.style.borderLeft = `5px solid ${color}`;
+            element.style.backgroundColor = '#f7f7f7';
+            element.style.paddingLeft = "6px";
+            element.style.paddingTop = "2px";
+            element.style.paddingBottom = "2px";
+            element.style.borderRadius = "4px";
+            element.style.color = "#000";
 
-                popup.innerHTML = `
-                    <div class="popup-top-row">
-                        <div class="score-box" style="background-color: ${color};">
-                            ${professorData.score.toFixed(1)}
-                        </div>
-                        <div class="info-panel">
-                            <div class="info-item"><strong>Difficulty:</strong> ${professorData.difficulty}</div>
-                            <div class="info-item"><strong>Would Take Again:</strong> ${professorData.wouldTakeAgain}</div>
-                            <div class="info-item">Based on ${professorData.numRatings} ratings.</div>
-                        </div>
-                    </div>
-                    ${tagsHTML}
-                `;
-            } else {
-                popup.innerHTML = `
-                    <div class="info-panel" style="text-align: center;">
-                        <h5 style="margin: 0 0 5px 0;">No Rating Found</h5>
-                        <div style="font-size: 10px;">Click name to search manually.</div>
-                    </div>
-                `;
-            }
-            professorContainer.appendChild(popup);
+            element.dataset.rtbypUrl = profileUrl;
+            element.dataset.rtbypPayload = JSON.stringify({
+                score: scoreValue,
+                rating: professorData?.rating || "N/A",
+                difficulty: professorData?.difficulty || "N/A",
+                wouldTakeAgain: professorData?.wouldTakeAgain || "N/A",
+                numRatings: professorData?.numRatings || 0,
+                tags: Array.isArray(professorData?.tags) ? professorData.tags : []
+            });
 
-            // 6. Interaction Listeners
-            let timeout;
-            const updatePopupPosition = (event) => {
-                const x = event.clientX;
-                const y = event.clientY;
-                popup.style.left = `${x}px`;
-                popup.style.top = `${y - 32}px`;
-            };
-            const showPopup = (event) => {
-                clearTimeout(timeout);
-                updatePopupPosition(event);
-                popup.style.display = "flex";
-                popup.style.opacity = "0";
-                timeout = setTimeout(() => { popup.style.opacity = "1"; }, 10);
-            };
-            const hidePopup = () => {
-                clearTimeout(timeout);
-                popup.style.opacity = "0";
-                timeout = setTimeout(() => { popup.style.display = "none"; }, 400);
-            };
-
-            professorContainer.addEventListener('mouseenter', showPopup);
-            professorContainer.addEventListener('mousemove', updatePopupPosition);
-            professorContainer.addEventListener('mouseleave', hidePopup);
-
-            // 7. Replace original element in the DOM
-            element.replaceWith(professorContainer);
+            bindProfessorInteractions(element);
+        } else {
+            // Remove the rating indicator if the professor name is not found
+            element.style.borderLeft = "none";
+            element.style.paddingLeft = "0";
+            element.style.borderRadius = "0";
+            element.style.paddingTop = "0";
+            element.style.paddingBottom = "0";
+            element.dataset.rtbypUrl = null;
+            element.dataset.rtbypPayload = null;
+            element.dataset.rtbypBound = null;
+            element.style.cursor = "default";
+            element.style.color = "#666";
+            element.style.backgroundColor = "transparent";
         }
     }
     
@@ -176,6 +253,7 @@ async function get_rating(elements) {
 console.log("Rate This BYU Professor is active!");
 
 const observer = new MutationObserver(function(mutations) {
+    detectUrlChange();
     tryFindingProfessors();
 
     // UI Cleanup for MyMap
@@ -192,13 +270,17 @@ observer.observe(document.body, {
     subtree: true
 });
 
-async function tryFindingProfessors() {
+async function tryFindingProfessors(options = {}) {
+    const { forceRefresh = false } = options;
     const fragment = window.location.hash.substring(1);
     if (fragment === "/") {
         // Dashboard / Home page
         // Check if registering for future term or viewing past term.
         const classListingElements = document.querySelectorAll(".cdSectionRoot");
-        if (!classListingElements || classListingElements.length === 0 || Array.from(classListingElements).some(el => el.attributes['rated-already'] && el.attributes['rated-already'].value === "true")) {
+        if (!classListingElements || classListingElements.length === 0) {
+            return;
+        }
+        if (!forceRefresh && Array.from(classListingElements).some(el => el.attributes['rated-already'] && el.attributes['rated-already'].value === "true")) {
             return;
         }
         // console.log("Class listing elements found:", classListingElements);
@@ -207,12 +289,52 @@ async function tryFindingProfessors() {
         }
         const isRegistrationForFuture = classListingElements[0].closest('.cdRegCartDraggable') !== null;
         if (isRegistrationForFuture) {
-            await get_rating(document.querySelectorAll(".cdSectionRoot > :nth-child(3 of .verticallyCentered)"));
+            await get_rating(document.querySelectorAll(".cdSectionRoot > :nth-child(3 of .verticallyCentered)"), { force: forceRefresh });
         } else {
-            await get_rating(document.querySelectorAll(".cdSectionRoot > :nth-child(3)"));
+            await get_rating(document.querySelectorAll(".cdSectionRoot > :nth-child(3)"), { force: forceRefresh });
         }
     } else if (fragment.includes("chooseASection")) {
         // Registration / Class search
-        await get_rating(document.querySelectorAll(".sectionDetailsCol > h4"));
+        await get_rating(document.querySelectorAll(".sectionDetailsCol > h4"), { force: forceRefresh });
     }
 }
+
+let lastKnownUrl = window.location.href;
+
+function clearRatedAlreadyFlags() {
+    const ratedSections = document.querySelectorAll(".cdSectionRoot[rated-already='true']");
+    ratedSections.forEach((section) => section.removeAttribute("rated-already"));
+}
+
+function detectUrlChange() {
+    const currentUrl = window.location.href;
+    if (currentUrl === lastKnownUrl) {
+        return;
+    }
+
+    lastKnownUrl = currentUrl;
+    console.log("URL changed, rerunning professor rating injection.");
+    clearRatedAlreadyFlags();
+
+    // Run immediately and then again shortly after to catch async SPA renders.
+    tryFindingProfessors({ forceRefresh: true });
+    setTimeout(() => tryFindingProfessors({ forceRefresh: true }), 500);
+    setTimeout(() => tryFindingProfessors({ forceRefresh: true }), 1500);
+}
+
+window.addEventListener("hashchange", detectUrlChange);
+window.addEventListener("popstate", detectUrlChange);
+
+const originalPushState = history.pushState;
+history.pushState = function(...args) {
+    const result = originalPushState.apply(this, args);
+    detectUrlChange();
+    return result;
+};
+
+const originalReplaceState = history.replaceState;
+history.replaceState = function(...args) {
+    const result = originalReplaceState.apply(this, args);
+    detectUrlChange();
+    return result;
+};
