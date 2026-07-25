@@ -1,3 +1,6 @@
+// log all local storage data
+// chrome.storage.local.get(null, (data) => console.log(data));
+
 // Add the CSS file to the page
 function addCSS(fileName) {
   var head = document.head;
@@ -189,7 +192,7 @@ async function get_rating(elements, options = {}) {
 
                     professorData.url = professorData.url || `https://www.ratemyprofessors.com/search/professors?q=${encodeURIComponent(professorName)}&sid=135`; // Fallback to search URL if direct profile URL isn't available
 
-                    console.log(`URL: ${professorData.url} | Rating for ${professorName}:`, professorData);
+                    // console.log(`URL: ${professorData.url} | Rating for ${professorName}:`, professorData);
 
                     // 2. Cache the entire flattened object
                     if (professorData && professorData.rating && professorData.rating !== "N/A") {
@@ -252,17 +255,82 @@ async function get_rating(elements, options = {}) {
 
 console.log("Rate This BYU Professor is active!");
 
+let eliminateAlerts = true;
+
+async function loadEliminateAlertsSetting() {
+    const { eliminateAlerts: stored = true } = await chrome.storage.local.get({
+        eliminateAlerts: true,
+    });
+    eliminateAlerts = Boolean(stored);
+}
+
+function applyAlertCleanup() {
+    if (!eliminateAlerts) {
+        return;
+    }
+
+    const betaBar = document.querySelector('.betaTestBar');
+    if (betaBar && betaBar.style.visibility !== 'hidden') {
+        betaBar.style.visibility = 'hidden';
+        // Eliminate gap where alert was
+        const mainContent = document.querySelector('.mainContentRoot');
+        if (mainContent) {
+            mainContent.style.marginTop = '100px';
+        }
+    }
+    const notifications = document.querySelectorAll('.resultNotificationRoot');
+    notifications.forEach(n => n.remove());
+}
+
+// let hasPromotionBanner = false;
+
+// function applyPromotionBanner() {
+//     const promotionBanner = document.createElement("article");
+//     promotionBanner.classList.add("promotion-banner");
+//     promotionBanner.innerHTML = `
+//         <p style="margin-right: 10px;">Enjoying <span style="font-weight: bold;">Rate This BYU Professor</span>? Consider leaving a review or sharing with a friend!</p>
+//         <a style="color: #fff; text-decoration: underline;" href="https://chromewebstore.google.com/detail/bdhjildnnfjkjlejbbjonkkegojchgha?utm_source=item-share-cb" target="_blank">Chrome Web Store</a>
+//     `;
+//     promotionBanner.style.position = "fixed";
+//     promotionBanner.style.zIndex = "2147483647";
+//     promotionBanner.style.bottom = "0";
+//     promotionBanner.style.left = "0";
+//     promotionBanner.style.width = "100%";
+//     promotionBanner.style.padding = "10px";
+//     promotionBanner.style.textAlign = "center";
+//     promotionBanner.style.display = "flex";
+//     promotionBanner.style.justifyContent = "center";
+//     promotionBanner.style.alignItems = "center";
+//     promotionBanner.style.color = "#fff";
+//     promotionBanner.style.backgroundColor = "#002e5d";
+
+//     const header = document.getElementsByClassName('stickyHeader')
+//     if (header && !hasPromotionBanner) {
+//         console.log("Header found:", header);
+//         console.log(header.item(0).appendChild(promotionBanner));
+//         // header[0].appendChild(promotionBanner);
+//         hasPromotionBanner = true;
+//     }
+//     // document.body.appendChild(promotionBanner);
+// }
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName !== "local" || !changes.eliminateAlerts) {
+        return;
+    }
+    eliminateAlerts = Boolean(changes.eliminateAlerts.newValue);
+    applyAlertCleanup();
+});
+
+loadEliminateAlertsSetting().then(applyAlertCleanup);
+
 const observer = new MutationObserver(function(mutations) {
     detectUrlChange();
     tryFindingProfessors();
 
-    // UI Cleanup for MyMap
-    const betaBar = document.querySelector('.betaTestBar');
-    if (betaBar && betaBar.style.visibility !== 'hidden') {
-        betaBar.style.visibility = 'hidden';
-    }
-    const notifications = document.querySelectorAll('.resultNotificationRoot');
-    notifications.forEach(n => n.remove());
+    // UI Cleanup for MyMap (Hide alerts)
+    applyAlertCleanup();
+    applyPromotionBanner();
 });
 
 observer.observe(document.body, {
@@ -313,7 +381,7 @@ function detectUrlChange() {
     }
 
     lastKnownUrl = currentUrl;
-    console.log("URL changed, rerunning professor rating injection.");
+    // console.log("URL changed, rerunning professor rating injection.");
     clearRatedAlreadyFlags();
 
     // Run immediately and then again shortly after to catch async SPA renders.
