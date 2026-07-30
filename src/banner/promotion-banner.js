@@ -15,12 +15,20 @@ function closePromotionBanner() {
 }
 
 // Check if the banner has been closed and the date it was closed.
+// On first install (no closed date yet), seed a date one week ago so the
+// banner waits for the installation cooldown instead of showing immediately.
 async function getBannerClosedStatus() {
     const result = await chrome.storage.local.get({ "promotionBannerClosed": false, "promotionBannerClosedDate": null });
-    if (result.promotionBannerClosed) {
-        return {closed: true, closedDate: result.promotionBannerClosedDate};
+    if (result.promotionBannerClosedDate) {
+        return { closed: true, closedDate: result.promotionBannerClosedDate };
     }
-    return {closed: false, closedDate: null};
+
+    const weekAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 7).toISOString();
+    chrome.storage.local.set({
+        "promotionBannerClosed": true,
+        "promotionBannerClosedDate": weekAgo,
+    });
+    return { closed: true, closedDate: weekAgo };
 }
 
 // Create the promotion banner and add it to the page.
@@ -58,7 +66,7 @@ function createPromotionBanner() {
     linkButton.style.margin = "0 5px";
     linkButton.style.cursor = "pointer";
     linkButton.addEventListener("click", () => {
-        window.open("https://chromewebstore.google.com/detail/bdhjildnnfjkjlejbbjonkkegojchgha?utm_source=item-share-cb", "_blank");
+        window.open("https://chromewebstore.google.com/detail/bdhjildnnfjkjlejbbjonkkegojchgha?utm_source=internal-banner", "_blank");
         closePromotionBanner();
     });
     promotionBanner.appendChild(linkButton);
