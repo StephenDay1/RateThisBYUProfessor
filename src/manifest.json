@@ -1,7 +1,7 @@
 {
-    "name": "Rate this BYU professor",
+    "name": "Rate This BYU Professor",
     "description": "Integration of Rate My Professors into BYU's MyMAP.",
-    "version": "1.2.1",
+    "version": "1.2.2",
     "manifest_version": 3,
     "action": {
         "default_popup": "popup/popup.html",

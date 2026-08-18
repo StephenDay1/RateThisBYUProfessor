@@ -272,11 +272,11 @@ function applyAlertCleanup() {
     const betaBar = document.querySelector('.betaTestBar');
     if (betaBar && betaBar.style.visibility !== 'hidden') {
         betaBar.style.visibility = 'hidden';
-        // Eliminate gap where alert was
-        const mainContent = document.querySelector('.mainContentRoot');
-        if (mainContent) {
-            mainContent.style.marginTop = '100px';
-        }
+    }
+    // Eliminate gap where alert was
+    const mainContent = document.querySelector('.mainContentRoot');
+    if (mainContent) {
+        mainContent.style.marginTop = '100px';
     }
     const notifications = document.querySelectorAll('.resultNotificationRoot');
     notifications.forEach(n => n.remove());
