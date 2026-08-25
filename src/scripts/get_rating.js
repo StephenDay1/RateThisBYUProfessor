@@ -209,15 +209,17 @@ async function get_rating(elements, options = {}) {
             const color = scoreValue >= 4 ? "#7ff6c3" : scoreValue >= 3 ? "#fff170" : scoreValue > 0 ? "#ff9c9c" : "#cccccc";
             const profileUrl = professorData?.url || `https://www.ratemyprofessors.com/search/professors?q=${encodeURIComponent(professorName)}&sid=135`;
 
-            // Temporary fix: preserve BYU's original DOM node so semester switching can update text.
             // Only apply visual score indicators to the existing element.
             element.style.borderLeft = `5px solid ${color}`;
             element.style.backgroundColor = '#f7f7f7';
             element.style.paddingLeft = "6px";
+            element.style.paddingRight = "4px";
             element.style.paddingTop = "2px";
             element.style.paddingBottom = "2px";
             element.style.borderRadius = "4px";
             element.style.color = "#000";
+            element.style.fontWeight = "normal";
+            element.style.fontSize = "14px";
 
             element.dataset.rtbypUrl = profileUrl;
             element.dataset.rtbypPayload = JSON.stringify({
@@ -281,38 +283,6 @@ function applyAlertCleanup() {
     const notifications = document.querySelectorAll('.resultNotificationRoot');
     notifications.forEach(n => n.remove());
 }
-
-// let hasPromotionBanner = false;
-
-// function applyPromotionBanner() {
-//     const promotionBanner = document.createElement("article");
-//     promotionBanner.classList.add("promotion-banner");
-//     promotionBanner.innerHTML = `
-//         <p style="margin-right: 10px;">Enjoying <span style="font-weight: bold;">Rate This BYU Professor</span>? Consider leaving a review or sharing with a friend!</p>
-//         <a style="color: #fff; text-decoration: underline;" href="https://chromewebstore.google.com/detail/bdhjildnnfjkjlejbbjonkkegojchgha?utm_source=item-share-cb" target="_blank">Chrome Web Store</a>
-//     `;
-//     promotionBanner.style.position = "fixed";
-//     promotionBanner.style.zIndex = "2147483647";
-//     promotionBanner.style.bottom = "0";
-//     promotionBanner.style.left = "0";
-//     promotionBanner.style.width = "100%";
-//     promotionBanner.style.padding = "10px";
-//     promotionBanner.style.textAlign = "center";
-//     promotionBanner.style.display = "flex";
-//     promotionBanner.style.justifyContent = "center";
-//     promotionBanner.style.alignItems = "center";
-//     promotionBanner.style.color = "#fff";
-//     promotionBanner.style.backgroundColor = "#002e5d";
-
-//     const header = document.getElementsByClassName('stickyHeader')
-//     if (header && !hasPromotionBanner) {
-//         console.log("Header found:", header);
-//         console.log(header.item(0).appendChild(promotionBanner));
-//         // header[0].appendChild(promotionBanner);
-//         hasPromotionBanner = true;
-//     }
-//     // document.body.appendChild(promotionBanner);
-// }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName !== "local" || !changes.eliminateAlerts) {
