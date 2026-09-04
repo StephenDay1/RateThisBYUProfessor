@@ -3,6 +3,12 @@
     "description": "Integration of Rate My Professors into BYU's MyMAP.",
     "version": "1.2.2",
     "manifest_version": 3,
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "rate-this-byu-professor@stephen-day1.github.io",
+            "strict_min_version": "121.0"
+        }
+    },
     "action": {
         "default_popup": "popup/popup.html",
         "default_icon": "images/LogoLarge.png"
@@ -26,7 +32,8 @@
         }
     ],
     "background": {
-        "service_worker": "scripts/scrape.js"
+        "service_worker": "scripts/scrape.js",
+        "scripts": ["scripts/scrape.js"]
     },
     "content_scripts": [
         {

@@ -1,0 +1,36 @@
+name: Release extension zip
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  zip:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version from manifest
+        id: ver
+        run: echo "version=$(jq -r .version src/manifest.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Build cross-browser zip
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          OUT="RateThisBYUProfessor-v${VERSION}.zip"
+          cd src
+          zip -r "../${OUT}" . \
+            -x "*.DS_Store" \
+            -x "package.json" \
+            -x "package-lock.json" \
+            -x "node_modules/*"
+          echo "Built ${OUT}"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: RateThisBYUProfessor-v*.zip
+          generate_release_notes: true

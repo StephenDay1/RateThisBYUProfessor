@@ -2,4 +2,6 @@
 !.gitignore
 !*.md
 !/src/
+!/.github/
+!/.github/**
 src/.DS_Store
