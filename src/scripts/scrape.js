@@ -43,8 +43,12 @@ async function fetchRating(fullName) {
     };
 
     // 1. CLEAN THE NAME
-    // Removes middle initials: "Mike P Jones" -> "Mike Jones"
-    const cleanSearchName = fullName.replace(/\s[A-Z]\s/gi, ' ').trim();
+    // Strips periods/commas, then removes middle initials: "D. J. Lee" -> "D Lee", "Mike P Jones" -> "Mike Jones"
+    const cleanSearchName = fullName
+        .replace(/[.,]/g, ' ')
+        .replace(/\s[A-Z]\s/gi, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
     const nameParts = cleanSearchName.split(/\s+/);
     
     if (nameParts.length < 2) return { rating: "N/A", message: "Invalid Name" };
@@ -243,9 +247,9 @@ async function fetchRating(fullName) {
             const rFirst = t.node.firstName.toLowerCase();
             const rLast = t.node.lastName.toLowerCase();
             
-            // Normalize names (remove spaces/hyphens) for "Xianjin" vs "Xian Jin"
-            const normRFirst = rFirst.replace(/[\s-]/g, '');
-            const normSearchFirst = firstName.replace(/[\s-]/g, '');
+            // Normalize names (keep letters only) for "Xianjin" vs "Xian Jin" and "D J" vs "DJ"
+            const normRFirst = rFirst.replace(/[^\p{L}]/gu, '');
+            const normSearchFirst = firstName.replace(/[^\p{L}]/gu, '');
 
             // MATCHING CRITERIA:
             
@@ -254,12 +258,14 @@ async function fetchRating(fullName) {
             if (!lastMatch) return false;
 
             // B. First Name Fuzzy Match ("Xianjin" match)
-            const fuzzyFirstMatch = normRFirst.includes(normSearchFirst) || 
-                                   normSearchFirst.includes(normRFirst);
+            // Skipped for single initials, which would match any name containing that letter
+            const fuzzyFirstMatch = normSearchFirst.length > 1 &&
+                                   (normRFirst.includes(normSearchFirst) ||
+                                    normSearchFirst.includes(normRFirst));
 
             // C. Initial Match ("G Lloyd" match)
             // Checks if the MyMap first name is just an initial of the RMP first name
-            const isInitialMatch = firstName.length === 1 && rFirst.startsWith(firstName);
+            const isInitialMatch = normSearchFirst.length === 1 && normRFirst.startsWith(normSearchFirst);
 
             return fuzzyFirstMatch || isInitialMatch;
         });
