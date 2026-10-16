@@ -76,3 +76,88 @@
     cursor: pointer;
     height: fit-content;
 }
+
+.fluff-prompt {
+    all: initial;
+    position: absolute;
+    z-index: 2147483647;
+    box-sizing: border-box;
+    width: 300px;
+    background-color: #fff;
+    border: 1px solid #e6e9f1;
+    border-radius: 6px;
+    padding: 12px;
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.15);
+    color: #333;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+    line-height: 1.3;
+    pointer-events: auto;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out 0.1s;
+}
+
+.fluff-prompt-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.fluff-prompt-logo {
+    width: 22px;
+    height: 22px;
+    flex-shrink: 0;
+    border-radius: 4px;
+    object-fit: cover;
+}
+
+.fluff-prompt-title {
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #000;
+}
+
+.fluff-prompt p {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 13px;
+    line-height: 1;
+    color: #333;
+}
+
+.fluff-prompt p + p {
+    margin-top: 6px;
+}
+
+.fluff-prompt-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.fluff-prompt-button {
+    all: unset;
+    box-sizing: border-box;
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+}
+
+.fluff-prompt-yes {
+    background: #002e5d;
+    color: #fff;
+}
+
+.fluff-prompt-no {
+    background: #f7f7f7;
+    color: #333;
+    border: 1px solid #e6e9f1;
+}

@@ -30,7 +30,7 @@
     ],
     "web_accessible_resources": [
         {
-            "resources": ["scripts/injected-styles.css"],
+            "resources": ["scripts/injected-styles.css", "images/Logo.png"],
             "matches": ["https://commtech.byu.edu/*"]
         }
     ],
