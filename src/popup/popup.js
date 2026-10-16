@@ -1,4 +1,4 @@
-const SETTINGS_KEYS = new Set(["eliminateAlerts"]);
+const SETTINGS_KEYS = new Set(["eliminateAlerts", "hideUnavailableClasses"]);
 
 function setStatus(message) {
   const el = document.getElementById("status");
@@ -11,17 +11,23 @@ function isCachedProfessorEntry(key, value) {
 }
 
 async function loadSettings() {
-  const toggle = document.getElementById("eliminateAlertsToggle");
-  if (!toggle) return;
+  const alertsToggle = document.getElementById("eliminateAlertsToggle");
+  const classesToggle = document.getElementById("hideUnavailableClassesToggle");
 
-  const { eliminateAlerts = false } = await chrome.storage.local.get({
+  const { eliminateAlerts = false, hideUnavailableClasses = false } = await chrome.storage.local.get({
     eliminateAlerts: false,
+    hideUnavailableClasses: false,
   });
-  toggle.checked = Boolean(eliminateAlerts);
+  if (alertsToggle) alertsToggle.checked = Boolean(eliminateAlerts);
+  if (classesToggle) classesToggle.checked = Boolean(hideUnavailableClasses);
 }
 
 async function saveEliminateAlerts(enabled) {
   await chrome.storage.local.set({ eliminateAlerts: Boolean(enabled) });
+}
+
+async function saveHideUnavailableClasses(enabled) {
+  await chrome.storage.local.set({ hideUnavailableClasses: Boolean(enabled) });
 }
 
 async function refreshCacheUI() {
@@ -75,12 +81,24 @@ document.addEventListener("DOMContentLoaded", async () => {
     setStatus(`Could not read cache: ${e?.message ?? String(e)}`);
   }
 
-  const toggle = document.getElementById("eliminateAlertsToggle");
-  if (toggle) {
-    toggle.addEventListener("change", async () => {
+  const alertsToggle = document.getElementById("eliminateAlertsToggle");
+  if (alertsToggle) {
+    alertsToggle.addEventListener("change", async () => {
       try {
-        await saveEliminateAlerts(toggle.checked);
-        setStatus(toggle.checked ? "MyMap alerts hidden." : "MyMap alerts shown.");
+        await saveEliminateAlerts(alertsToggle.checked);
+        setStatus(alertsToggle.checked ? "MyMap alerts hidden." : "MyMap alerts shown.");
+      } catch (e) {
+        setStatus(`Failed to save setting: ${e?.message ?? String(e)}`);
+      }
+    });
+  }
+
+  const classesToggle = document.getElementById("hideUnavailableClassesToggle");
+  if (classesToggle) {
+    classesToggle.addEventListener("change", async () => {
+      try {
+        await saveHideUnavailableClasses(classesToggle.checked);
+        setStatus(classesToggle.checked ? "Unavailable classes hidden." : "Unavailable classes shown.");
       } catch (e) {
         setStatus(`Failed to save setting: ${e?.message ?? String(e)}`);
       }
