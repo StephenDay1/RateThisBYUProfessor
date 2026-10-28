@@ -15,6 +15,28 @@ function addCSS(fileName) {
 
 addCSS("scripts/injected-styles.css");
 
+function ratingCacheTtlMs() {
+    return 7 * 24 * 60 * 60 * 1000;
+}
+
+function isNonRatingStorageKey(key) {
+    return key === "eliminateAlerts"
+        || key === "hideUnavailableClasses"
+        || key === "promotionBannerClosed"
+        || key === "promotionBannerClosedDate";
+}
+
+function isCachedProfessorEntry(key, value) {
+    return Boolean(value)
+        && typeof value === "object"
+        && typeof value.date === "number"
+        && !isNonRatingStorageKey(key);
+}
+
+function isStaleRatingCacheEntry(key, value, now = Date.now()) {
+    return isCachedProfessorEntry(key, value) && (now - value.date > ratingCacheTtlMs());
+}
+
 let sharedRatingPopup = null;
 let sharedPopupHideTimeout = null;
 
@@ -149,14 +171,10 @@ async function get_rating(elements, options = {}) {
             let professorData = null;
             let needsUpdate = true;
 
-            // If we have data for this professor, check if it's stale.
+            // Entries older than 7 days are ignored and fetched again.
             if (Object.keys(professorCachedData).length > 0) {
                 const storedEntry = professorCachedData[professorName];
-                // If data is older than 3 days, we update it
-                const daysTilStale = 7;
-                if (storedEntry.date && (Date.now() - storedEntry.date > 1000 * 60 * 60 * 24 * daysTilStale)) {
-                    // console.log(`${professorName}: Cached data is older than ${daysTilStale} days. Updating...`);
-                } else {
+                if (!isStaleRatingCacheEntry(professorName, storedEntry)) {
                     professorData = storedEntry;
                     needsUpdate = false;
                     // console.log(`Using cached data for ${professorName}:`, professorData);

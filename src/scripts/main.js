@@ -1,5 +1,35 @@
 console.log("Rate This BYU Professor is active!");
 
+let staleCacheCleanup = Promise.resolve();
+
+function cleanupStaleRatings() {
+    const now = Date.now();
+    staleCacheCleanup = (async () => {
+        try {
+            const all = await chrome.storage.local.get(null);
+            const staleKeys = Object.entries(all)
+                .filter(([key, value]) => isStaleRatingCacheEntry(key, value, now))
+                .map(([key]) => key);
+
+            if (staleKeys.length === 0) {
+                return;
+            }
+
+            // Re-read so a rating refreshed after the first snapshot is kept.
+            const current = await chrome.storage.local.get(staleKeys);
+            const stillStale = staleKeys.filter((key) => isStaleRatingCacheEntry(key, current[key], now));
+            if (stillStale.length > 0) {
+                await chrome.storage.local.remove(stillStale);
+            }
+        } catch (err) {
+            console.error("Failed to clean up stale professor ratings:", err);
+        }
+    })();
+    return staleCacheCleanup;
+}
+
+cleanupStaleRatings();
+
 const observer = new MutationObserver(function(mutations) {
     detectUrlChange();
     tryFindingProfessors();
@@ -27,6 +57,7 @@ observer.observe(document.body, {
 });
 
 async function tryFindingProfessors(options = {}) {
+    await staleCacheCleanup;
     const { forceRefresh = false } = options;
     const fragment = window.location.hash.substring(1);
     if (fragment === "/") {
@@ -71,6 +102,7 @@ function detectUrlChange() {
     lastKnownUrl = currentUrl;
     // console.log("URL changed, rerunning professor rating injection.");
     clearRatedAlreadyFlags();
+    cleanupStaleRatings();
 
     // Run immediately and then again shortly after to catch async SPA renders.
     tryFindingProfessors({ forceRefresh: true });

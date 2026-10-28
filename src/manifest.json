@@ -1,7 +1,7 @@
 {
     "name": "Rate This BYU Professor",
     "description": "Integration of Rate My Professors into BYU's MyMAP.",
-    "version": "1.3.0",
+    "version": "1.3.1",
     "manifest_version": 3,
     "browser_specific_settings": {
         "gecko": {
