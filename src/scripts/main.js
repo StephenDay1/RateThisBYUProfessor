@@ -67,22 +67,34 @@ async function tryFindingProfessors(options = {}) {
         if (!classListingElements || classListingElements.length === 0) {
             return;
         }
-        if (!forceRefresh && Array.from(classListingElements).some(el => el.attributes['rated-already'] && el.attributes['rated-already'].value === "true")) {
-            return;
-        }
-        // console.log("Class listing elements found:", classListingElements);
-        for (const el of classListingElements) {
-            el.setAttribute("rated-already", "true");
-        }
         const isRegistrationForFuture = classListingElements[0].closest('.cdRegCartDraggable') !== null;
-        if (isRegistrationForFuture) {
-            await get_rating(document.querySelectorAll(".cdSectionRoot > :nth-child(3 of .verticallyCentered)"), { force: forceRefresh });
-        } else {
-            await get_rating(document.querySelectorAll(".cdSectionRoot > :nth-child(3)"), { force: forceRefresh });
-        }
+        const instructorSelector = isRegistrationForFuture
+            ? ".cdSectionRoot > :nth-child(3 of .verticallyCentered)"
+            : ".cdSectionRoot > :nth-child(3)";
+        await rateUnratedInstructors(instructorSelector, forceRefresh);
     } else if (fragment.includes("chooseASection")) {
         // Registration / Class search
         await get_rating(document.querySelectorAll(".sectionDetailsCol > h4"), { force: forceRefresh });
+    }
+}
+
+function unratedInstructorElements(selector) {
+    return Array.from(document.querySelectorAll(selector)).filter((element) => {
+        const section = element.closest(".cdSectionRoot");
+        return section?.getAttribute("rated-already") !== "true";
+    });
+}
+
+async function rateUnratedInstructors(selector, forceRefresh) {
+    let pending = unratedInstructorElements(selector);
+    while (pending.length > 0) {
+        await get_rating(pending, { force: forceRefresh });
+        const next = unratedInstructorElements(selector);
+        const madeProgress = next.length !== pending.length || next.some((element, index) => element !== pending[index]);
+        if (!madeProgress) {
+            return;
+        }
+        pending = next;
     }
 }
 

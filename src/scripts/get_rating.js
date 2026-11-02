@@ -159,6 +159,11 @@ async function get_rating(elements, options = {}) {
             continue;
         }
 
+        const section = element.closest(".cdSectionRoot");
+        if (section) {
+            section.setAttribute("rated-already", "true");
+        }
+
         const existingNameSpan = element.querySelector('span');
         let professorName = (force && existingNameSpan ? existingNameSpan.textContent : element.textContent).trim();
         console.log("Professor Name:", professorName);
